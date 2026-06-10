@@ -32,6 +32,142 @@ export const screenStateRowSchema = z
     }),
   )
 
+export const eventPublicRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    slug: z.string(),
+    title: z.string(),
+    subtitle: z.string().nullable(),
+    edition: z.string().nullable(),
+    event_date: z.string().nullable(),
+    start_at: z.string().nullable(),
+    closing_message: z.string().nullable(),
+    asso_slide_enabled: z.boolean(),
+    qr_url: z.string().nullable(),
+    sponsor_scroll_speed: z.number(),
+  })
+  .transform((r) => ({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    subtitle: r.subtitle,
+    edition: r.edition,
+    eventDate: r.event_date,
+    startAt: r.start_at,
+    closingMessage: r.closing_message,
+    assoSlideEnabled: r.asso_slide_enabled,
+    qrUrl: r.qr_url,
+    sponsorScrollSpeed: r.sponsor_scroll_speed,
+  }))
+
+export const speakerRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    first_name: z.string(),
+    last_name: z.string(),
+    title: z.string().nullable(),
+    company: z.string().nullable(),
+    bio: z.string().nullable(),
+    photo_url: z.string().nullable(),
+    is_host: z.boolean(),
+    sort_order: z.number(),
+    hidden: z.boolean(),
+  })
+  .transform((r) => ({
+    id: r.id,
+    firstName: r.first_name,
+    lastName: r.last_name,
+    title: r.title,
+    company: r.company,
+    bio: r.bio,
+    photoUrl: r.photo_url,
+    isHost: r.is_host,
+    sortOrder: r.sort_order,
+    hidden: r.hidden,
+  }))
+
+export const sponsorRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string(),
+    logo_url: z.string(),
+    sort_order: z.number(),
+  })
+  .transform((r) => ({
+    id: r.id,
+    name: r.name,
+    logoUrl: r.logo_url,
+    sortOrder: r.sort_order,
+  }))
+
+export const contentRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    kind: z.enum(['embed_gslides', 'embed_figma', 'image', 'video']),
+    url: z.string(),
+    label: z.string(),
+    sort_order: z.number(),
+  })
+  .transform((r) => ({
+    id: r.id,
+    kind: r.kind,
+    url: r.url,
+    label: r.label,
+    sortOrder: r.sort_order,
+  }))
+
+export const definitionRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    term: z.string(),
+    definition: z.string(),
+    sort_order: z.number(),
+  })
+  .transform((r) => ({
+    id: r.id,
+    term: r.term,
+    definition: r.definition,
+    sortOrder: r.sort_order,
+  }))
+
+export const questionRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    text: z.string(),
+    source: z.enum(['prepared', 'audience']),
+    status: z.enum(['pending', 'displayed', 'done', 'archived']),
+    author_name: z.string().nullable(),
+    pinned: z.boolean(),
+    sort_order: z.number(),
+  })
+  .transform((r) => ({
+    id: r.id,
+    text: r.text,
+    source: r.source,
+    status: r.status,
+    authorName: r.author_name,
+    pinned: r.pinned,
+    sortOrder: r.sort_order,
+  }))
+
+export const pollRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    kind: z.enum(['poll', 'versus']),
+    question: z.string(),
+    options: z.array(z.object({ id: z.string(), label: z.string() })),
+    status: z.enum(['draft', 'live', 'closed', 'archived']),
+    show_results: z.boolean(),
+  })
+  .transform((r) => ({
+    id: r.id,
+    kind: r.kind,
+    question: r.question,
+    options: r.options,
+    status: r.status,
+    showResults: r.show_results,
+  }))
+
 export const questionSubmissionSchema = z.object({
   text: z.string().trim().min(1, 'Question vide').max(300, '300 caractères maximum'),
   authorName: z.string().trim().max(80).optional(),

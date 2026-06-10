@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## Sprint 1 — Écran Public (10 juin 2026)
+
+### Livré
+
+- **Direction design « affiche de scène »** : fond encre (projection salle sombre), display Archivo étiré très gras, micro-labels IBM Plex Mono (écho à la barre d'état des maquettes IR), accent indigo électrique, grain + vignette CSS statiques.
+- **Mode ATTENTE** : compte à rebours monumental (tabulaire, arrêt à zéro → « C'est parti ! »), rotation des fiches speakers (6 s, statique si un seul), titre + édition.
+- **Mode DYNAMIQUE** : contenu principal (embed Google Slides / Figma whitelistés, image, vidéo) ; scène calme intentionnelle si aucun contenu ou URL invalide (jamais d'erreur projetée). Overlays « lower-third » animés : question (attribution public/préparée), définition (style dictionnaire), sondage/vote.
+- **Sondages vs votes (D2)** : `poll` = barres de résultats temps réel pendant le vote (agrégation client de `poll_votes` en realtime) ; `versus` = split A/B sans chiffres pendant le vote, révélation à la clôture ; `show_results=false` = chiffres cachés même clôturé ; « Aucun vote » géré.
+- **Bandeaux** : sponsors permanent sur les 4 modes (marquee CSS pur, absent si aucun sponsor), speakers masquable (haut, compacté > 4), QR code masquable (caché si URL invalide).
+- **Modes INTRO/OUTRO basiques** : slide titre / remerciements + logos grand format (séquence intro complète au Sprint 3).
+- **Couche données** : `fetchEventData` (1 chargement au boot EP), schémas Zod par table, `subscribePoll` avec resync à chaque reconnexion.
+
+### Décisions
+
+- `qrcode.react` ajouté (validé) : génération SVG locale, zéro réseau pendant le live.
+- Embeds : whitelist stricte `docs.google.com` / `figma.com` dans `toEmbedUrl` — URL hors domaine = fallback, jamais d'iframe arbitraire. `sandbox` avec `allow-scripts` assumé (Slides/Figma sont des apps JS ; cross-origin, `allow-same-origin` ne donne accès qu'à leur propre origine).
+- Fonts Google (Archivo, IBM Plex Mono) chargées au boot avec fallback système — risque réseau limité au chargement initial, jamais en cours de live.
+
+### Vérification
+
+- 34/34 tests verts (machine à états + helpers embed), build OK, lint OK.
+- Revue de code : 2 fixes appliqués (reset rotation speakers sur changement de liste, fallback initiales avatar) ; faux positifs documentés (setters React stables, sandbox iframe requis).
+
 ## Sprint 0 — Fondations (10 juin 2026)
 
 ### Livré
