@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## Sprint 4 — Backoffice (10 juin 2026)
+
+### Livré
+
+- **Auth organisateur** (Supabase Auth, login uniquement — compte créé hors app ; dev : `admin@demo.local`/`demo1234`). Mono-événement V1 : premier événement chargé, création guidée sinon (PIN initial 0000 à changer).
+- **Section Événement** : titre/sous-titre/édition/date, heure de début du timer (conversion locale↔UTC correcte au réaffichage), message de clôture, URL du QR, vitesse du bandeau sponsors, **slide asso** (toggle + contenu, activation bloquée si nom vide — PRD 5.3.1), **PIN de session** (RPC `admin_set_pin`, hash bcrypt serveur, jamais en clair), URLs des 3 surfaces avec bouton copier (dont l'URL EP avec son token).
+- **Sections CRUD** (composant générique `ListSection` : ajout, édition inline, suppression, réordonnancement ▲▼) : speakers (photo, animateur·rice), sponsors (logo), contenus (Google Slides/Figma/image/vidéo), définitions, questions préparées, sondages, votes (options une par ligne, toggle résultats).
+- **Upload d'images** : redimensionnement + conversion **WebP** côté client (canvas, 800 px photos / 400 px logos), bucket Storage `media` (lecture publique, écriture authentifiée), cache 1 an.
+- **Migrations** : bucket + policies + `admin_set_pin`, `admin_create_event`.
+
+### Vérification
+
+- 41/41 tests, build, lint verts. Smoke : RLS bloque inserts anonymes, `admin_set_pin` refuse l'anonyme et le PIN changé est accepté par `control_auth`, CRUD authentifié OK.
+- Revue : 7 fixes (try/finally bitmap, flag watchAuth, **réaffichage start_at UTC→local**, exclusion clés serveur en update, préservation des ids d'options — votes liés par `option_id`, log upload, validation type fichier).
+
 ## Sprint 3 — Intro / Outro / Audience (10 juin 2026)
 
 ### Livré

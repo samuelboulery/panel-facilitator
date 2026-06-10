@@ -1,0 +1,301 @@
+// Sections CRUD concrètes du backoffice — une par entité, toutes bâties sur
+// ListSection. Les champs reflètent le schéma (PLAN.md §3).
+import { ListSection } from './ListSection'
+import { ImageField, TextArea, TextField, Toggle } from '../components/fields'
+
+const str = (v: unknown) => (typeof v === 'string' ? v : '')
+const bool = (v: unknown) => v === true
+
+interface SpeakerRow {
+  id: string
+  sort_order: number
+  first_name: string
+  last_name: string
+  title: string | null
+  company: string | null
+  bio: string | null
+  photo_url: string | null
+  is_host: boolean
+  hidden: boolean
+}
+
+export function SpeakersSection({ eventId }: { eventId: string }) {
+  return (
+    <ListSection<SpeakerRow>
+      table="speakers"
+      eventId={eventId}
+      addLabel="Ajouter un speaker"
+      emptyRow={() => ({
+        first_name: '', last_name: '', title: '', company: '', bio: '',
+        photo_url: null, is_host: false, hidden: false,
+      })}
+      renderSummary={(s) => (
+        <div className="flex items-center gap-3">
+          {s.photo_url ? (
+            <img src={s.photo_url} alt="" className="h-9 w-9 rounded-full object-cover" />
+          ) : (
+            <div className="h-9 w-9 rounded-full bg-control-bg" />
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">
+              {s.first_name} {s.last_name}
+              {s.is_host && <span className="ml-2 rounded bg-control-accent px-1.5 py-0.5 font-mono text-[10px] text-white">Animateur·rice</span>}
+              {s.hidden && <span className="ml-2 font-mono text-[10px] text-control-dim uppercase">masqué</span>}
+            </p>
+            <p className="truncate font-mono text-xs text-control-dim">
+              {[s.title, s.company].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+        </div>
+      )}
+      renderForm={(d, set) => (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <TextField label="Prénom" value={str(d.first_name)} onChange={(v) => set('first_name', v)} />
+            <TextField label="Nom" value={str(d.last_name)} onChange={(v) => set('last_name', v)} />
+            <TextField label="Titre" value={str(d.title)} onChange={(v) => set('title', v)} />
+            <TextField label="Société" value={str(d.company)} onChange={(v) => set('company', v)} />
+          </div>
+          <TextArea label="Bio courte" value={str(d.bio)} onChange={(v) => set('bio', v)} />
+          <ImageField
+            label="Photo"
+            url={typeof d.photo_url === 'string' ? d.photo_url : null}
+            folder="speakers"
+            maxDim={800}
+            onUploaded={(url) => set('photo_url', url)}
+          />
+          <Toggle label="Animateur·rice" checked={bool(d.is_host)} onChange={(v) => set('is_host', v)} />
+        </>
+      )}
+    />
+  )
+}
+
+interface SponsorRow {
+  id: string
+  sort_order: number
+  name: string
+  logo_url: string
+}
+
+export function SponsorsSection({ eventId }: { eventId: string }) {
+  return (
+    <ListSection<SponsorRow>
+      table="sponsors"
+      eventId={eventId}
+      addLabel="Ajouter un sponsor"
+      emptyRow={() => ({ name: '', logo_url: '' })}
+      renderSummary={(s) => (
+        <div className="flex items-center gap-3">
+          <img src={s.logo_url} alt="" className="h-8 max-w-24 object-contain" />
+          <span className="text-sm font-semibold">{s.name}</span>
+        </div>
+      )}
+      renderForm={(d, set) => (
+        <>
+          <TextField label="Nom" value={str(d.name)} onChange={(v) => set('name', v)} />
+          <ImageField
+            label="Logo"
+            url={typeof d.logo_url === 'string' && d.logo_url ? d.logo_url : null}
+            folder="sponsors"
+            maxDim={400}
+            onUploaded={(url) => set('logo_url', url)}
+          />
+        </>
+      )}
+    />
+  )
+}
+
+interface ContentRow {
+  id: string
+  sort_order: number
+  kind: string
+  url: string
+  label: string
+}
+
+const CONTENT_KINDS = [
+  { value: 'embed_gslides', label: 'Google Slides' },
+  { value: 'embed_figma', label: 'Figma' },
+  { value: 'image', label: 'Image (URL)' },
+  { value: 'video', label: 'Vidéo (URL)' },
+]
+
+export function ContentsSection({ eventId }: { eventId: string }) {
+  return (
+    <ListSection<ContentRow>
+      table="contents"
+      eventId={eventId}
+      addLabel="Ajouter un contenu"
+      emptyRow={() => ({ kind: 'embed_gslides', url: '', label: '' })}
+      renderSummary={(c) => (
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">
+            <span className="mr-2 font-mono text-[10px] text-control-dim uppercase">
+              {CONTENT_KINDS.find((k) => k.value === c.kind)?.label}
+            </span>
+            {c.label}
+          </p>
+          <p className="truncate font-mono text-xs text-control-dim">{c.url}</p>
+        </div>
+      )}
+      renderForm={(d, set) => (
+        <>
+          <label className="block">
+            <span className="mb-1 block font-mono text-xs tracking-wide text-control-dim">Type</span>
+            <select
+              value={str(d.kind)}
+              onChange={(e) => set('kind', e.target.value)}
+              className="w-full rounded-lg border border-control-bg bg-white px-3 py-2 text-sm"
+            >
+              {CONTENT_KINDS.map((k) => (
+                <option key={k.value} value={k.value}>{k.label}</option>
+              ))}
+            </select>
+          </label>
+          <TextField label="Libellé (affiché dans l'IR)" value={str(d.label)} onChange={(v) => set('label', v)} />
+          <TextField label="URL" value={str(d.url)} onChange={(v) => set('url', v)} placeholder="https://…" />
+        </>
+      )}
+    />
+  )
+}
+
+interface DefinitionRow {
+  id: string
+  sort_order: number
+  term: string
+  definition: string
+}
+
+export function DefinitionsSection({ eventId }: { eventId: string }) {
+  return (
+    <ListSection<DefinitionRow>
+      table="definitions"
+      eventId={eventId}
+      addLabel="Ajouter une définition"
+      emptyRow={() => ({ term: '', definition: '' })}
+      renderSummary={(d) => (
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{d.term}</p>
+          <p className="truncate text-xs text-control-dim">{d.definition}</p>
+        </div>
+      )}
+      renderForm={(d, set) => (
+        <>
+          <TextField label="Terme" value={str(d.term)} onChange={(v) => set('term', v)} />
+          <TextArea label="Définition" value={str(d.definition)} onChange={(v) => set('definition', v)} />
+        </>
+      )}
+    />
+  )
+}
+
+interface QuestionRow {
+  id: string
+  sort_order: number
+  text: string
+  source: string
+  status: string
+}
+
+export function QuestionsSection({ eventId }: { eventId: string }) {
+  return (
+    <ListSection<QuestionRow>
+      table="questions"
+      eventId={eventId}
+      addLabel="Ajouter une question préparée"
+      emptyRow={() => ({ text: '', source: 'prepared', status: 'pending' })}
+      renderSummary={(q) => (
+        <p className="truncate text-sm">
+          {q.source === 'audience' && (
+            <span className="mr-2 rounded bg-control-accent px-1.5 py-0.5 font-mono text-[10px] text-white">Public</span>
+          )}
+          {q.text}
+        </p>
+      )}
+      renderForm={(d, set) => (
+        <TextArea label="Question (300 car. max)" value={str(d.text)} onChange={(v) => set('text', v.slice(0, 300))} />
+      )}
+    />
+  )
+}
+
+interface PollRow {
+  id: string
+  sort_order: number
+  kind: string
+  question: string
+  options: { id: string; label: string }[]
+  status: string
+  show_results: boolean
+}
+
+function optionsToText(options: unknown): string {
+  if (!Array.isArray(options)) return ''
+  return options.map((o) => (o as { label?: string }).label ?? '').join('\n')
+}
+
+// Préserve les ids existants par position : poll_votes référence option_id —
+// rééditer un sondage déjà voté ne doit pas orphaniner les votes.
+function textToOptions(
+  text: string,
+  existing?: { id: string; label: string }[],
+): { id: string; label: string }[] {
+  return text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((label, i) => ({ id: existing?.[i]?.id ?? `opt-${i + 1}`, label }))
+}
+
+export function PollsSection({ eventId, kind }: { eventId: string; kind: 'poll' | 'versus' }) {
+  return (
+    <ListSection<PollRow>
+      table="polls"
+      eventId={eventId}
+      addLabel={kind === 'versus' ? 'Ajouter un vote' : 'Ajouter un sondage'}
+      emptyRow={() => ({
+        kind,
+        question: '',
+        options: [],
+        _options_text: '',
+        status: 'draft',
+        show_results: true,
+        created_live: false,
+      })}
+      renderSummary={(p) => (
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{p.question}</p>
+          <p className="font-mono text-xs text-control-dim">
+            {p.options.map((o) => o.label).join(' / ')} · {p.status}
+            {!p.show_results && ' · résultats cachés'}
+          </p>
+        </div>
+      )}
+      renderForm={(d, set) => {
+        const text =
+          typeof d._options_text === 'string' ? d._options_text : optionsToText(d.options)
+        return (
+          <>
+            <TextField label="Question" value={str(d.question)} onChange={(v) => set('question', v)} />
+            <TextArea
+              label="Options (une par ligne)"
+              value={text}
+              onChange={(v) => {
+                set('_options_text', v)
+                set('options', textToOptions(v, Array.isArray(d.options) ? (d.options as { id: string; label: string }[]) : undefined))
+              }}
+            />
+            <Toggle
+              label="Afficher les résultats à la clôture"
+              checked={bool(d.show_results)}
+              onChange={(v) => set('show_results', v)}
+            />
+          </>
+        )
+      }}
+    />
+  )
+}
