@@ -11,9 +11,8 @@
 |---|---|---|
 | Frontend (4 surfaces) | React + Vite + TypeScript | React 19, Vite 6 |
 | Styling / animations | Tailwind CSS + Framer Motion | v4 / v11 |
-| Backend / DB / Realtime | Supabase (PostgreSQL + Realtime + Auth + Storage) | cloud |
-| Monorepo | pnpm workspaces | — |
-| Hébergement fronts | Vercel (un projet par app) | — |
+| Backend / DB / Realtime | Supabase (PostgreSQL + Realtime + Auth + Storage) | CLI locale (Docker) en dev, cloud plus tard |
+| Hébergement front | Vercel (un seul projet) | — |
 
 ### Justification : React + Supabase Realtime vs alternatives
 
@@ -31,25 +30,26 @@
 
 ## 2. Architecture des surfaces
 
-**Monorepo pnpm** (conforme à la structure recommandée du prompt) :
+**App unique Vite** (arbitrage utilisateur — D11), 4 surfaces = 4 groupes de routes lazy-loadées :
 
 ```
 /
 ├── PLAN.md / CHANGELOG.md
-├── apps/
-│   ├── screen/        ← EP — 1920×1080, lecture seule, route /screen/:slug
-│   ├── control/       ← IR — tablette, PIN, routes /control/:slug
-│   ├── admin/         ← Backoffice — PC, auth Supabase
-│   └── audience/      ← Formulaire mobile QR (questions + votes) — voir décision D1
-├── packages/
-│   ├── shared/        ← Types TS, schémas Zod, machine à états, constantes
-│   └── realtime/      ← Abstraction canal (subscribe état, mutations, presence)
-└── supabase/          ← Migrations SQL, seed, config
+├── src/
+│   ├── routes/
+│   │   ├── screen/    ← EP — 1920×1080, lecture seule    → /screen/:slug
+│   │   ├── control/   ← IR — tablette, PIN               → /control/:slug
+│   │   ├── admin/     ← Backoffice — PC, auth Supabase   → /admin
+│   │   └── audience/  ← Formulaire mobile QR             → /q/:slug
+│   ├── shared/        ← Types TS, schémas Zod, machine à états, priorités overlay
+│   └── realtime/      ← Abstraction canal (subscribe état, mutations RPC, presence)
+└── supabase/          ← Migrations SQL, seed, config locale
 ```
 
-- **4 apps, pas 3** : le PRD arbitre « système de vote interne » et « formulaire de questions interne » (Q1/Q2). Il faut donc une surface mobile pour l'audience — ajoutée en `apps/audience` (décision D1).
-- Chaque app est déployée indépendamment sur Vercel ; `packages/*` sont buildés en interne (pas de publication npm).
-- `packages/realtime` isole supabase-js : si on devait migrer vers Socket.io un jour, seul ce package change.
+- **4 surfaces, pas 3** : le PRD arbitre « système de vote interne » et « formulaire de questions interne » (Q1/Q2). Il faut donc une surface mobile pour l'audience — route `/q/:slug` (décision D1).
+- **Lazy-loading par groupe de routes** : l'EP ne charge jamais le code du backoffice ni de l'IR. Le bundle de chaque surface reste léger malgré l'app unique.
+- Un seul deploy Vercel, une seule config env.
+- `src/realtime/` isole supabase-js : si on devait migrer vers Socket.io un jour, seul ce dossier change. Règle stricte : aucun import `supabase-js` hors de `src/realtime/`.
 
 ---
 
@@ -85,6 +85,10 @@ polls         (id, event_id FK, kind enum[poll|versus], question text,
                status enum[draft|live|closed|archived],
                show_results bool, created_live bool)
                -- "votes" du PRD = kind='versus' (décision D2)
+               -- Affichage résultats sur l'EP selon kind :
+               --   poll   → résultats agrégés EN TEMPS RÉEL pendant le vote
+               --   versus → résultats masqués pendant le vote, affichés À LA CLÔTURE
+               -- show_results = toggle régie pour cacher les résultats même à la clôture
 
 poll_votes    (id, poll_id FK, option_id, voter_fingerprint text, created_at,
                UNIQUE(poll_id, voter_fingerprint))   ← anti double-vote
@@ -103,7 +107,7 @@ screen_state  (event_id PK/FK,                       ← SOURCE DE VÉRITÉ EP
                updated_at)
 ```
 
-**Règle de priorité des overlays** (Q5 : sondage/vote > question > définition) : appliquée côté `packages/shared` (machine à états) ET par contrainte applicative dans les mutations — lancer un sondage ferme automatiquement l'overlay question/définition actif (un seul overlay dans `screen_state.overlay`).
+**Règle de priorité des overlays** (Q5 : sondage/vote > question > définition) : appliquée côté `src/shared` (machine à états) ET par contrainte applicative dans les mutations — lancer un sondage ferme automatiquement l'overlay question/définition actif (un seul overlay dans `screen_state.overlay`).
 
 **Sécurité (RLS)** :
 - Lecture publique des données nécessaires à l'EP/audience filtrée par event (slug/token).
@@ -141,16 +145,16 @@ screen_state  (event_id PK/FK,                       ← SOURCE DE VÉRITÉ EP
 Ordre aligné sur les priorités P1→P4 du prompt ; chaque sprint livre de la valeur testable.
 
 ### Sprint 0 — Fondations (débloque tout)
-- Scaffolding monorepo pnpm (4 apps Vite + 2 packages + supabase/)
+- Scaffolding app Vite unique (React + TS + Tailwind) + `supabase init` / `supabase start` (stack locale Docker)
 - Migrations initiales (schéma §3), seed de démo
-- `packages/shared` : types, schémas Zod, **machine à états** ATTENTE→INTRO→DYNAMIQUE→OUTRO + règles de priorité overlay
-- `packages/realtime` : client, subscribe `screen_state`, mutations RPC, presence
-- Routing des 4 apps, écran PIN de l'IR
+- `src/shared` : types, schémas Zod, **machine à états** ATTENTE→INTRO→DYNAMIQUE→OUTRO + règles de priorité overlay
+- `src/realtime` : client, subscribe `screen_state`, mutations RPC, presence
+- Routing lazy des 4 surfaces, écran PIN de l'IR
 - Mode dégradé EP (conservation dernier état + re-fetch au resubscribe)
 
 ### Sprint 1 — Écran Public (P1)
 - Mode ATTENTE : timer (arrêt à zéro), rotation fiches speakers, bandeau sponsors (caché si vide)
-- Mode DYNAMIQUE : contenu principal (embed Google Slides/Figma, image, vidéo) + overlays question / sondage / vote / définition avec résultats temps réel
+- Mode DYNAMIQUE : contenu principal (embed Google Slides/Figma, image, vidéo) + overlays question / sondage / vote / définition — résultats sondage en temps réel pendant le vote, résultats versus uniquement à la clôture
 - Bandeau speakers permanent + QR code (masquables) ; fallbacks (avatar générique, QR caché si URL invalide)
 - Contraintes : 1920×1080, aucune scrollbar, aucune UI de contrôle, animations 60fps (Framer Motion)
 
@@ -165,7 +169,7 @@ Ordre aligné sur les priorités P1→P4 du prompt ; chaque sprint livre de la v
 ### Sprint 3 — Intro / Outro + Audience (P3)
 - Slides web INTRO générées des données (asso optionnelle → titre → animateur → speakers 1/n → grille récap), navigation manuelle depuis l'IR, masquage speaker désisté
 - OUTRO : message clôture + logos sponsors grand format
-- `apps/audience` : formulaire questions (300 car. max) + interface de vote sondage, fingerprint anti double-vote
+- Surface audience `/q/:slug` : formulaire questions (300 car. max) + interface de vote sondage, fingerprint anti double-vote
 
 ### Sprint 4 — Backoffice (P4)
 - Auth organisateur, CRUD : événement, speakers/animateur, sponsors, questions préparées, sondages/votes, définitions, contenus embed, QR url, toggle asso, PIN session
@@ -181,8 +185,8 @@ Ordre aligné sur les priorités P1→P4 du prompt ; chaque sprint livre de la v
 
 | # | Décision | Justification |
 |---|---|---|
-| **D1** | App `apps/audience` ajoutée (4ᵉ surface, route `/q/{slug}`) | Q1/Q2 arbitrent vote + questions en interne ⇒ il faut une surface mobile audience. Non listée dans la structure du prompt mais impliquée par le PRD. |
-| **D2** | Votes = `polls` avec `kind='versus'` | PRD 5.4.8 : « fonctionne comme un sondage simplifié à deux options ». Même mécanique d'états, de votes et de priorité ⇒ une seule table, deux rendus. |
+| **D1** | 4ᵉ surface audience ajoutée (route `/q/{slug}`) | Q1/Q2 arbitrent vote + questions en interne ⇒ il faut une surface mobile audience. Non listée dans la structure du prompt mais impliquée par le PRD. |
+| **D2** | Votes = `polls` avec `kind='versus'` ; affichage résultats différencié par `kind` | PRD 5.4.8 : « fonctionne comme un sondage simplifié à deux options ». Même mécanique d'états et de priorité ⇒ une seule table, deux rendus. **Sondage : résultats en temps réel sur l'EP pendant le vote. Versus : résultats masqués pendant le vote, affichés à la clôture** (arbitrage utilisateur). |
 | **D3** | État EP = ligne `screen_state` en DB (DB-first), pas broadcast éphémère | Mode dégradé et reload EP gratuits ; source de vérité unique ; l'IR peut afficher l'état réel. |
 | **D4** | PIN haché en DB, vérifié par RPC ; jamais transmis/stocké en clair | Sécurité basique exigible même pour un PIN 4–6 chiffres. |
 | **D5** | Anti double-vote par fingerprint UUID en localStorage | Pas d'auth audience en V1 ; suffisant pour un usage événementiel bienveillant. Documenté comme limite connue. |
@@ -190,13 +194,17 @@ Ordre aligné sur les priorités P1→P4 du prompt ; chaque sprint livre de la v
 | **D7** | Backoffice protégé par Supabase Auth (1 compte organisateur) | Le PIN ne protège que l'IR live ; le backoffice contient toute la donnée ⇒ vraie auth. Multi-utilisateurs hors scope V1. |
 | **D8** | Timer ATTENTE calculé côté client depuis `events.start_at` | Pas de tick serveur ; précision suffisante, zéro trafic réseau. |
 | **D9** | Résultats sondage temps réel via subscribe `poll_votes` + agrégation client | Volume V1 faible (une salle) ; évite triggers/vues matérialisées prématurés. |
-| **D10** | Vercel pour les 4 fronts, Supabase cloud pour le backend | Zéro ops, previews par PR, conforme aux recommandations PRD §7.3. |
+| **D10** | Un seul projet Vercel ; **Supabase local en dev** (CLI + Docker), bascule cloud avant l'événement | Arbitrage utilisateur. Les migrations SQL versionnées rendent la bascule triviale (`supabase db push` + swap des variables d'env). Zéro ops, conforme PRD §7.3. |
+| **D11** | App unique avec lazy-loading par groupe de routes (pas de monorepo) | Arbitrage utilisateur. Un deploy, une config, code partagé trivial. Le code-splitting garantit un bundle EP léger ; `src/shared` et `src/realtime` conservent leur rôle de frontière. |
 
 ---
 
-## Validation attendue
+## Validation — arbitrages rendus (10 juin 2026)
 
-Points à confirmer avant Sprint 0 :
-1. La 4ᵉ app `audience` (D1) vous convient ?
-2. Fusion votes/sondages en une table (D2) OK ?
-3. Supabase cloud (compte existant ?) ou instance locale pour le dev ?
+| Question | Arbitrage |
+|---|---|
+| 4 apps ou app unique ? | **App unique**, routes lazy `/screen` `/control` `/admin` `/q` (D11) |
+| Fusion votes/sondages ? | **Oui**, avec différence d'affichage : sondage = résultats temps réel pendant le vote ; vote (versus) = résultats à la clôture uniquement (D2) |
+| Supabase cloud ou local ? | **Local pour le dev** (CLI + Docker), bascule cloud plus tard (D10) |
+
+✅ Plan validé — Sprint 0 peut démarrer.

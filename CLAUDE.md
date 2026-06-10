@@ -9,31 +9,32 @@ Outil web de gestion d'écran temps réel pour tables rondes design : une régie
 
 ## Architecture
 
-4 surfaces, monorepo pnpm :
+App unique Vite, 4 surfaces = 4 groupes de routes lazy-loadées :
 
 ```
-apps/screen     EP — écran public 1920×1080, lecture seule  → /screen/{slug}?k={token}
-apps/control    IR — régie/animateur tablette, PIN          → /control/{slug}
-apps/admin      Backoffice configuration, Supabase Auth     → /admin
-apps/audience   Formulaire mobile QR (questions + votes)    → /q/{slug}
-packages/shared    Types, Zod, machine à états, priorités overlay
-packages/realtime  Abstraction Supabase (subscribe, mutations RPC, presence)
-supabase/          Migrations SQL, seed
+src/routes/screen     EP — écran public 1920×1080, lecture seule  → /screen/{slug}?k={token}
+src/routes/control    IR — régie/animateur tablette, PIN          → /control/{slug}
+src/routes/admin      Backoffice configuration, Supabase Auth     → /admin
+src/routes/audience   Formulaire mobile QR (questions + votes)    → /q/{slug}
+src/shared            Types, Zod, machine à états, priorités overlay
+src/realtime          Abstraction Supabase (subscribe, mutations RPC, presence)
+supabase/             Migrations SQL, seed, config locale
 ```
 
-**Tech stack :** React 19 + Vite + TypeScript, Tailwind CSS, Framer Motion, Supabase (Postgres + Realtime + Storage + Auth), pnpm workspaces.
+**Tech stack :** React 19 + Vite + TypeScript, Tailwind CSS, Framer Motion, Supabase (Postgres + Realtime + Storage + Auth — **local en dev** via CLI/Docker, cloud plus tard).
 
 **Flux temps réel :** action IR → RPC → UPDATE `screen_state` (source de vérité) → `postgres_changes` → EP. Reconnexion = re-fetch `screen_state`.
 
 ## Commandes clés
 
 ```bash
-pnpm install              # dépendances workspace
-pnpm dev                  # toutes les apps en dev
-pnpm --filter screen dev  # une seule app (screen|control|admin|audience)
+pnpm install              # dépendances
+pnpm dev                  # dev server Vite (toutes les surfaces)
 pnpm test                 # tests (Vitest)
 pnpm lint                 # ESLint
-pnpm build                # build toutes les apps
+pnpm build                # build production
+supabase start            # stack Supabase locale (Docker requis)
+supabase stop             # arrêt de la stack locale
 supabase db reset         # rejoue migrations + seed (local uniquement)
 ```
 
@@ -42,8 +43,8 @@ supabase db reset         # rejoue migrations + seed (local uniquement)
 ## Conventions
 
 - Code, identifiants, noms de fichiers en **anglais** ; UI et commentaires métier en **français** (produit FR-only V1)
-- Machine à états et règles de priorité overlay (`sondage/vote > question > définition`) vivent dans `packages/shared` — jamais dupliquées dans les apps
-- Tout accès Supabase passe par `packages/realtime` — pas de `supabase-js` direct dans les apps
+- Machine à états et règles de priorité overlay (`sondage/vote > question > définition`) vivent dans `src/shared` — jamais dupliquées dans les routes
+- Tout accès Supabase passe par `src/realtime` — pas d'import `supabase-js` ailleurs
 - Commits : Conventional Commits en français (`feat:`, `fix:`, `docs:`…)
 - `CHANGELOG.md` mis à jour à chaque sprint avec les décisions prises
 - Commentaire d'architecture en tête de chaque fichier structurant
@@ -53,6 +54,7 @@ supabase db reset         # rejoue migrations + seed (local uniquement)
 - L'EP n'affiche JAMAIS : scrollbar, UI de contrôle, indicateur de reconnexion visible
 - Les questions audience ne s'affichent JAMAIS automatiquement sur l'EP — validation régie obligatoire
 - Un seul overlay actif à la fois ; lancer un sondage/vote ferme l'overlay courant
+- Sondage : résultats en temps réel sur l'EP pendant le vote. Vote (versus) : résultats masqués pendant le vote, affichés uniquement à la clôture
 - Bandeau sponsors visible sur les 4 modes, caché si aucun sponsor (pas d'espace vide)
 - Latence action IR → EP < 2 s ; reconnexion EP < 30 s ; EP figé sur dernier état si offline
 - Les décisions arbitrées du PRD §11 (Q1–Q11) sont fermées — ne pas les rouvrir
