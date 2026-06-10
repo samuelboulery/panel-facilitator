@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+.vercel/
+
+# Env
+.env
+.env.local
+.env*.local
+
+# Supabase local
+supabase/.temp/
+
+# Knowledge graph (rebuilt locally)
+graphify-out/
+
+# Per-developer Claude overrides
+.claude/local/
+.claude/settings.local.json
+
+# OS
+.DS_Store
