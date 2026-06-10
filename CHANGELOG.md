@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## Sprint 5 — Qualité & résilience (10 juin 2026)
+
+### Livré
+
+- **Checklist pré-événement** (`src/shared/checklist`, TDD 10 tests) : règles pures à 3 niveaux (bloquant / dégradé / info) — heure de début, QR, asso sans contenu, speakers/photos manquants, URLs embed invalides, sondages < 2 options… Section « Checklist ✓ » dans le backoffice avec état « Prêt pour l'événement ».
+- **Tests de résilience** (4 tests, client Supabase mocké) : resynchronisation complète à chaque reconnexion, aucun changement d'état émis sur coupure (mode dégradé), payloads realtime corrompus ignorés (jamais d'état invalide sur l'EP), aucune émission après désabonnement.
+- **`TESTING.md`** : matrice des critères d'acceptance PRD §10 (15/15 couverts), scénario manuel de test de coupure réseau à rejouer avant chaque événement, commandes de lancement local.
+
+### Vérification
+
+- 55/55 tests, build, lint verts.
+
 ## Sprint 4 — Backoffice (10 juin 2026)
 
 ### Livré

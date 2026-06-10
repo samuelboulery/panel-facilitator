@@ -10,6 +10,7 @@ import {
   type AdminEvent,
 } from '../../realtime/adminData'
 import { TextField } from './components/fields'
+import { ChecklistSection } from './sections/ChecklistSection'
 import { EventSection } from './sections/EventSection'
 import {
   ContentsSection,
@@ -29,6 +30,7 @@ const SECTIONS = [
   { key: 'questions', label: 'Questions' },
   { key: 'polls', label: 'Sondages' },
   { key: 'votes', label: 'Votes' },
+  { key: 'checklist', label: 'Checklist ✓' },
 ] as const
 
 type SectionKey = (typeof SECTIONS)[number]['key']
@@ -185,6 +187,7 @@ export default function AdminRoute() {
           {section === 'questions' && <QuestionsSection eventId={event.id} />}
           {section === 'polls' && <PollsSection eventId={event.id} kind="poll" />}
           {section === 'votes' && <PollsSection eventId={event.id} kind="versus" />}
+          {section === 'checklist' && <ChecklistSection event={event} />}
         </main>
       </div>
     </div>
