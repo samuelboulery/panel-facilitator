@@ -13,7 +13,7 @@ values (
   'Merci à tous et à nos sponsors !',
   false,
   'http://localhost:5173/q/demo',
-  crypt('1234', gen_salt('bf')),
+  extensions.crypt('1234', extensions.gen_salt('bf')),
   'demo-screen-token-dev-only'
 );
 

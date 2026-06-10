@@ -4,7 +4,9 @@
 -- ont besoin ; TOUTES les écritures live passent par des RPC SECURITY DEFINER
 -- qui valident le contexte (PIN régie, fingerprint audience).
 
-create extension if not exists pgcrypto;
+-- pgcrypto vit dans le schéma `extensions` chez Supabase : toujours qualifier
+-- extensions.crypt / extensions.gen_salt (les fonctions fixent search_path=public).
+create extension if not exists pgcrypto with schema extensions;
 
 -- ───────────────────────────── Tables ─────────────────────────────
 
@@ -22,7 +24,7 @@ create table events (
   qr_url text,
   sponsor_scroll_speed int not null default 30,
   pin_hash text not null,
-  screen_token text not null unique default encode(gen_random_bytes(24), 'hex'),
+  screen_token text not null unique default encode(extensions.gen_random_bytes(24), 'hex'),
   created_at timestamptz not null default now()
 );
 
@@ -187,7 +189,7 @@ set search_path = public
 as $$
   select id from events
   where slug = p_slug
-    and pin_hash = crypt(p_pin, pin_hash);
+    and pin_hash = extensions.crypt(p_pin, pin_hash);
 $$;
 
 -- Mutation de l'état écran par la régie (authentifiée par PIN à chaque appel —
