@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+
+/* L'EP ne doit jamais afficher de scrollbar (contrainte PRD §4.1) —
+   appliqué au niveau racine quand la surface screen est montée. */
+.screen-surface {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
