@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { authenticateScreen, subscribeScreenState } from '../../realtime/screenState'
 import { fetchEventData, type EventData } from '../../realtime/eventData'
+import { subscribeSpeakerList } from '../../realtime/controlData'
 import { joinPresence } from '../../realtime/presence'
 import { initialScreenState } from '../../shared/stateMachine'
 import type { ScreenState } from '../../shared/types'
@@ -61,8 +62,13 @@ export default function ScreenRoute() {
       onState: setState,
       // Volontairement aucun rendu lié à la connexion : mode dégradé invisible.
     })
+    // Speakers en temps réel : masquage live depuis l'IR (intro + bandeaux).
+    const speakersSub = subscribeSpeakerList(eventId, (speakers) => {
+      setData((prev) => (prev ? { ...prev, speakers } : prev))
+    })
     return () => {
       subscription.unsubscribe()
+      speakersSub.unsubscribe()
       presence.leave()
     }
   }, [eventId])
@@ -89,7 +95,7 @@ export default function ScreenRoute() {
           className="absolute inset-0"
         >
           {state.mode === 'attente' && <AttenteMode data={data} />}
-          {state.mode === 'intro' && <IntroMode data={data} />}
+          {state.mode === 'intro' && <IntroMode data={data} state={state} />}
           {state.mode === 'dynamique' && <DynamiqueMode data={data} state={state} />}
           {state.mode === 'outro' && <OutroMode data={data} />}
         </motion.div>

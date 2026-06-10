@@ -38,6 +38,7 @@ export interface EventPublic {
   startAt: string | null
   closingMessage: string | null
   assoSlideEnabled: boolean
+  assoContent: unknown
   qrUrl: string | null
   sponsorScrollSpeed: number
 }

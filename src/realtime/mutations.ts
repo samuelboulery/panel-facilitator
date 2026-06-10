@@ -98,6 +98,17 @@ export async function setQuestionStatus(
   if (error) throw rpcError('Changement de statut refusé', error)
 }
 
+export async function setSpeakerHidden(
+  s: ControlSession,
+  speakerId: string,
+  hidden: boolean,
+): Promise<void> {
+  const { error } = await supabase.rpc('control_set_speaker_hidden', {
+    p_slug: s.slug, p_pin: s.pin, p_speaker_id: speakerId, p_hidden: hidden,
+  })
+  if (error) throw rpcError('Masquage du speaker refusé', error)
+}
+
 export async function setQuestionPinned(
   s: ControlSession,
   questionId: string,

@@ -9,8 +9,12 @@ import { z } from 'zod'
 import { controlAuth, type ControlSession } from '../../realtime/mutations'
 import * as mutations from '../../realtime/mutations'
 import { fetchEventData, subscribePoll, type EventData } from '../../realtime/eventData'
-import { subscribePollList, subscribeQuestionList } from '../../realtime/controlData'
-import type { Poll, PollResults, Question } from '../../shared/types'
+import {
+  subscribePollList,
+  subscribeQuestionList,
+  subscribeSpeakerList,
+} from '../../realtime/controlData'
+import type { Poll, PollResults, Question, Speaker } from '../../shared/types'
 import { PinGate } from './PinGate'
 import { useControlState } from './hooks/useControlState'
 import { StatusBar } from './components/StatusBar'
@@ -51,9 +55,14 @@ function ControlShell({ session }: { session: ControlSession }) {
   useEffect(() => {
     const qSub = subscribeQuestionList(session.eventId, setQuestions)
     const pSub = subscribePollList(session.eventId, setPolls)
+    // Speakers en temps réel : le masquage live recalcule la séquence intro.
+    const sSub = subscribeSpeakerList(session.eventId, (speakers: Speaker[]) => {
+      setData((prev) => (prev ? { ...prev, speakers } : prev))
+    })
     return () => {
       qSub.unsubscribe()
       pSub.unsubscribe()
+      sSub.unsubscribe()
     }
   }, [session.eventId])
 
@@ -129,7 +138,7 @@ function ControlShell({ session }: { session: ControlSession }) {
         }}
       >
         <div className="w-full shrink-0 overflow-y-auto px-4 py-3">
-          <SlidesView data={data} control={control} />
+          <SlidesView data={data} control={control} session={session} />
         </div>
         <div className="w-full shrink-0 overflow-y-auto px-4 py-3">
           <GestionView

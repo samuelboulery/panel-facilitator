@@ -2,15 +2,15 @@
 // Les listes (questions, sondages) sont re-fetchées intégralement à chaque
 // changement temps réel — volumes V1 faibles (une salle), simplicité > delta.
 import { supabase } from './client'
-import { pollRowSchema, questionRowSchema } from '../shared/schemas'
-import type { Poll, Question } from '../shared/types'
+import { pollRowSchema, questionRowSchema, speakerRowSchema } from '../shared/schemas'
+import type { Poll, Question, Speaker } from '../shared/types'
 
 export interface ListSubscription {
   unsubscribe: () => void
 }
 
 function subscribeList<T>(
-  table: 'questions' | 'polls',
+  table: 'questions' | 'polls' | 'speakers',
   eventId: string,
   schema: { safeParse: (v: unknown) => { success: boolean; data?: T } },
   onList: (rows: T[]) => void,
@@ -72,6 +72,14 @@ export function subscribePollList(
   onList: (polls: Poll[]) => void,
 ): ListSubscription {
   return subscribeList('polls', eventId, pollRowSchema, onList)
+}
+
+/** Speakers en temps réel — masquage live depuis l'IR (PRD 5.3.4). */
+export function subscribeSpeakerList(
+  eventId: string,
+  onList: (speakers: Speaker[]) => void,
+): ListSubscription {
+  return subscribeList('speakers', eventId, speakerRowSchema, onList)
 }
 
 export async function fetchNotes(eventId: string): Promise<string> {

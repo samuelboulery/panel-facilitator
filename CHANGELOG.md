@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## Sprint 3 — Intro / Outro / Audience (10 juin 2026)
+
+### Livré
+
+- **Séquence intro complète** (`src/shared/introSlides`, TDD 7 tests) : asso (optionnelle) → titre → animateur → speakers individuels → grille récap. Partagée EP/IR — une seule source de vérité de la séquence.
+- **EP mode INTRO** : slides web générées des données (slide personne avec photo/bio, grille animée en cascade), transitions latérales, index borné.
+- **IR navigation intro** : précédent/suivant, saut direct, position n/total, **masquage d'un speaker en live** (désistement, PRD 5.3.4) avec restauration — nouvelle migration `control_set_speaker_hidden` + table `speakers` en realtime (l'EP recalcule séquence et bandeaux instantanément).
+- **Surface audience `/q/{slug}`** (mobile) : formulaire de question (300 car., compteur, prénom optionnel, confirmation), panneau de vote qui apparaît dès qu'un sondage/vote passe live (versus = 2 gros boutons), fingerprint anti double-vote, états votés persistés.
+
+### Décisions
+
+- Masquage speaker mid-intro : EP et IR clampent l'index avec la même fonction pure sur les mêmes données temps réel — désync transitoire < 1 s acceptée (mono-opérateur), pas de duplication de la logique de séquence en SQL.
+- localStorage encapsulé (navigation privée Safari) : le vote fonctionne sans persistance, le serveur déduplique par fingerprint.
+- Fingerprint réinitialisable en vidant le localStorage = limite V1 documentée (D5).
+
+### Vérification
+
+- 41/41 tests, build, lint verts. Smoke RPC : question soumise, 301 caractères rejetés, double vote ignoré serveur, masquage speaker aller-retour.
+- Revue : 4 fixes (validation Zod `asso_content`, vote optimiste avant await, localStorage safe, reset erreur formulaire).
+
 ## Sprint 2 — Interface de Régie (10 juin 2026)
 
 ### Livré

@@ -43,6 +43,7 @@ export const eventPublicRowSchema = z
     start_at: z.string().nullable(),
     closing_message: z.string().nullable(),
     asso_slide_enabled: z.boolean(),
+    asso_content: z.unknown().nullable(),
     qr_url: z.string().nullable(),
     sponsor_scroll_speed: z.number(),
   })
@@ -56,6 +57,7 @@ export const eventPublicRowSchema = z
     startAt: r.start_at,
     closingMessage: r.closing_message,
     assoSlideEnabled: r.asso_slide_enabled,
+    assoContent: r.asso_content ?? null,
     qrUrl: r.qr_url,
     sponsorScrollSpeed: r.sponsor_scroll_speed,
   }))
@@ -167,6 +169,14 @@ export const pollRowSchema = z
     status: r.status,
     showResults: r.show_results,
   }))
+
+/** Contenu de la slide asso (jsonb libre en DB — validé au rendu). */
+export const assoContentSchema = z
+  .object({
+    name: z.string().optional(),
+    description: z.string().optional(),
+  })
+  .nullable()
 
 export const questionSubmissionSchema = z.object({
   text: z.string().trim().min(1, 'Question vide').max(300, '300 caractères maximum'),
