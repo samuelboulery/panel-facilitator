@@ -98,6 +98,17 @@ export async function setQuestionStatus(
   if (error) throw rpcError('Changement de statut refusé', error)
 }
 
+export async function setQuestionPinned(
+  s: ControlSession,
+  questionId: string,
+  pinned: boolean,
+): Promise<void> {
+  const { error } = await supabase.rpc('control_set_question_pinned', {
+    p_slug: s.slug, p_pin: s.pin, p_question_id: questionId, p_pinned: pinned,
+  })
+  if (error) throw rpcError('Épinglage refusé', error)
+}
+
 export async function saveNotes(s: ControlSession, contentMd: string): Promise<void> {
   const { error } = await supabase.rpc('control_save_notes', {
     p_slug: s.slug, p_pin: s.pin, p_content_md: contentMd,

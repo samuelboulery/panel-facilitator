@@ -14,6 +14,14 @@
   --color-versus-a: #4f5dff;
   --color-versus-b: #ff6b5e;
 
+  /* Palette IR — maquettes iPad : fond lavande, cartes blanches, barre noire */
+  --color-control-bg: #dfe2f0;
+  --color-control-panel: #e8eaf4;
+  --color-control-card: #ffffff;
+  --color-control-ink: #1c1d24;
+  --color-control-dim: #6b6e85;
+  --color-control-accent: #3b4fe0;
+
   --font-display: 'Archivo', 'Helvetica Neue', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }

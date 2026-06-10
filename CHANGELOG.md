@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## Sprint 2 — Interface de Régie (10 juin 2026)
+
+### Livré
+
+- **Structure 3 vues slideables** (Slides | Gestion par défaut | Notes) : onglets + swipe horizontal (`dragDirectionLock` pour ne pas voler le scroll vertical), design maquettes (fond lavande, cartes blanches, accent bleu).
+- **Vue Gestion** : définitions en chips, questions (préparées + audience temps réel, badge « Public », épingler/archiver, état « posée »), sondages et votes en sections séparées, création ad hoc (+), toggles bandeau speakers / QR, « Fermer l'overlay ».
+- **Modale de lancement 3 s** (maquettes Frames 149–151) : envoi auto à 0, « Envoyer » immédiat, « Annuler » bloque ; compte à rebours insensible aux re-renders parent (votes temps réel).
+- **Barre d'état noire** (maquettes iPad 13/17/18) : overlay actif, mode courant, heure, durée (depuis `start_at`), pastille connexion EP (presence) + latence (ping 10 s) ; extension sondage live avec barres de résultats + compteur + « Arrêter le sondage » ; rappel question active + « Retirer la question ».
+- **Vue Slides** : aperçu état EP (mode, contenu, overlay, toggles), navigation 4 modes, sélection du contenu principal.
+- **Vue Notes** : autosave debounce 1 s + flush au démontage (aucune frappe perdue).
+- **useControlState** : validation locale par la machine à états AVANT chaque RPC (un conflit de priorité est refusé instantanément avec toast), mise à jour optimiste, l'état serveur fait foi via realtime.
+- **Migration `control_set_question_pinned`** (badge Pin des maquettes).
+
+### Décisions
+
+- Lancement de sondage : `status='live'` confirmé PUIS overlay — jamais d'overlay sur un sondage resté draft.
+- « Durée » de la barre d'état = temps écoulé depuis `events.start_at` (00h00 avant le début).
+- Pas de protection anti-écrasement optimiste/realtime (mono-opérateur V1, l'état serveur s'auto-corrige au prochain événement).
+
+### Vérification
+
+- 34/34 tests, build, lint verts. Chaîne RPC → `screen_state` validée sur stack locale (attente→dynamique→attente).
+- Revue : 3 fixes appliqués (deps modale → ref, ordre live→overlay, flush notes au démontage) ; « double-confirm race » écarté (JS mono-thread).
+
 ## Sprint 1 — Écran Public (10 juin 2026)
 
 ### Livré
