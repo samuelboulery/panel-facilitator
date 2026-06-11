@@ -21,6 +21,7 @@ export const initialScreenState: ScreenState = {
   overlay: null,
   speakersBannerVisible: true,
   qrVisible: true,
+  timerStartedAt: null,
 }
 
 export type ScreenAction =

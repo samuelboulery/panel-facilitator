@@ -10,11 +10,12 @@ import { controlAuth, type ControlSession } from '../../realtime/mutations'
 import * as mutations from '../../realtime/mutations'
 import { fetchEventData, subscribePoll, type EventData } from '../../realtime/eventData'
 import {
+  subscribeDefinitionList,
   subscribePollList,
   subscribeQuestionList,
   subscribeSpeakerList,
 } from '../../realtime/controlData'
-import type { Poll, PollResults, Question, Speaker } from '../../shared/types'
+import type { Definition, Poll, PollResults, Question, Speaker } from '../../shared/types'
 import { PinGate } from './PinGate'
 import { useControlState } from './hooks/useControlState'
 import { StatusBar } from './components/StatusBar'
@@ -32,13 +33,16 @@ const storedSessionSchema = z.object({
   eventId: z.string().uuid(),
 })
 
-const VIEWS = ['Slides', 'Gestion', 'Notes'] as const
+const VIEW_COUNT = 3 // Slides | Gestion | Notes
+// Peek : les vues adjacentes dépassent et servent de poignées de swipe (maquettes 13/14/15).
+const PEEK_PCT = 4
 
 function ControlShell({ session }: { session: ControlSession }) {
   const control = useControlState(session)
   const [data, setData] = useState<EventData | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [polls, setPolls] = useState<Poll[]>([])
+  const [definitions, setDefinitions] = useState<Definition[]>([])
   const [viewIndex, setViewIndex] = useState(1) // Gestion par défaut
   const [launch, setLaunch] = useState<LaunchPayload | null>(null)
 
@@ -55,6 +59,7 @@ function ControlShell({ session }: { session: ControlSession }) {
   useEffect(() => {
     const qSub = subscribeQuestionList(session.eventId, setQuestions)
     const pSub = subscribePollList(session.eventId, setPolls)
+    const dSub = subscribeDefinitionList(session.eventId, setDefinitions)
     // Speakers en temps réel : le masquage live recalcule la séquence intro.
     const sSub = subscribeSpeakerList(session.eventId, (speakers: Speaker[]) => {
       setData((prev) => (prev ? { ...prev, speakers } : prev))
@@ -62,6 +67,7 @@ function ControlShell({ session }: { session: ControlSession }) {
     return () => {
       qSub.unsubscribe()
       pSub.unsubscribe()
+      dSub.unsubscribe()
       sSub.unsubscribe()
     }
   }, [session.eventId])
@@ -105,66 +111,71 @@ function ControlShell({ session }: { session: ControlSession }) {
     return <div className="flex h-dvh items-center justify-center bg-control-bg" />
   }
 
+  // Pager avec peek : chaque vue fait (100 - 2*PEEK) % de largeur ; les vues
+  // adjacentes dépassent des deux côtés et servent de poignées (tap ou swipe).
+  const viewWidthPct = 100 - 2 * PEEK_PCT
+  const offsetPct = PEEK_PCT - viewIndex * viewWidthPct
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-control-bg font-display text-control-ink">
-      {/* Onglets de navigation entre vues */}
-      <nav className="flex shrink-0 justify-center gap-2 px-4 pt-3 pb-1">
-        {VIEWS.map((view, i) => (
-          <button
-            key={view}
-            type="button"
-            onClick={() => setViewIndex(i)}
-            className={`rounded-full px-5 py-1.5 font-mono text-sm transition-colors ${
-              i === viewIndex ? 'bg-control-ink text-white' : 'text-control-dim'
-            }`}
-          >
-            {view}
-          </button>
-        ))}
-      </nav>
-
-      {/* Pager horizontal swipeable */}
+      {/* Pager horizontal — navigation au swipe uniquement (pas d'onglets) */}
       <motion.div
-        className="flex min-h-0 flex-1"
-        animate={{ x: `-${viewIndex * 100}%` }}
+        className="flex min-h-0 flex-1 pt-3"
+        animate={{ x: `${offsetPct}%` }}
         transition={{ type: 'tween', duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         drag="x"
         dragDirectionLock
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.12}
         onDragEnd={(_, info) => {
-          if (info.offset.x < -80 && viewIndex < VIEWS.length - 1) setViewIndex(viewIndex + 1)
+          if (info.offset.x < -80 && viewIndex < VIEW_COUNT - 1) setViewIndex(viewIndex + 1)
           else if (info.offset.x > 80 && viewIndex > 0) setViewIndex(viewIndex - 1)
         }}
       >
-        <div className="w-full shrink-0 overflow-y-auto px-4 py-3">
-          <SlidesView data={data} control={control} session={session} />
-        </div>
-        <div className="w-full shrink-0 overflow-y-auto px-4 py-3">
+        {[
+          <SlidesView key="slides" data={data} control={control} session={session} />,
           <GestionView
-            data={data}
+            key="gestion"
             control={control}
             session={session}
             questions={questions}
             polls={polls}
+            definitions={definitions}
             onLaunch={setLaunch}
-          />
-        </div>
-        <div className="w-full shrink-0 overflow-y-auto px-4 py-3">
-          <NotesView session={session} />
-        </div>
+          />,
+          <NotesView key="notes" session={session} />,
+        ].map((view, i) => (
+          <div
+            key={i}
+            style={{ width: `${viewWidthPct}%` }}
+            className={`shrink-0 overflow-y-auto px-3 pb-3 transition-opacity ${
+              i === viewIndex ? '' : 'opacity-60'
+            }`}
+            onClick={() => {
+              // Tap sur un panneau en peek = y naviguer.
+              if (i !== viewIndex) setViewIndex(i)
+            }}
+          >
+            <div className={i === viewIndex ? '' : 'pointer-events-none'}>{view}</div>
+          </div>
+        ))}
       </motion.div>
 
       <StatusBar
         screen={control.screen}
-        eventStartAt={data.event.startAt}
-        screenOnline={control.screenOnline}
-        latencyMs={control.latencyMs}
         activePoll={activePoll}
         activePollResults={activePollResults}
         activeQuestion={activeQuestion}
         onStopPoll={stopPoll}
         onCloseQuestion={closeQuestion}
+        onToggleTimer={() => {
+          mutations
+            .setTimerStartedAt(
+              session,
+              control.screen.timerStartedAt ? null : new Date().toISOString(),
+            )
+            .catch(() => undefined)
+        }}
       />
 
       <LaunchModal payload={launch} onDismiss={() => setLaunch(null)} />

@@ -22,3 +22,6 @@ graphify-out/
 
 # OS
 .DS_Store
+
+# Secrets edge functions (local)
+supabase/functions/.env

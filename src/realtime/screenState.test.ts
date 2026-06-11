@@ -60,6 +60,7 @@ const validRow = {
   overlay: { type: 'question', id: 'q1' },
   speakers_banner_visible: true,
   qr_visible: false,
+  timer_started_at: null,
 }
 
 const flush = () => new Promise((r) => setTimeout(r, 0))

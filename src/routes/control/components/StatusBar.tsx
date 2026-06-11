@@ -24,9 +24,9 @@ function useClock(): Date {
   return now
 }
 
-function formatDuration(startAt: string | null, now: Date): string {
-  if (!startAt) return '00h00'
-  const elapsed = now.getTime() - new Date(startAt).getTime()
+function formatDuration(startedAt: string | null, now: Date): string {
+  if (!startedAt) return '00h00'
+  const elapsed = now.getTime() - new Date(startedAt).getTime()
   if (Number.isNaN(elapsed) || elapsed < 0) return '00h00'
   const h = Math.floor(elapsed / 3_600_000)
   const m = Math.floor((elapsed % 3_600_000) / 60_000)
@@ -35,9 +35,6 @@ function formatDuration(startAt: string | null, now: Date): string {
 
 interface StatusBarProps {
   screen: ScreenState
-  eventStartAt: string | null
-  screenOnline: boolean
-  latencyMs: number | null
   /** Sondage actuellement en overlay (résultats live), null sinon. */
   activePoll: Poll | null
   activePollResults: PollResults
@@ -45,18 +42,18 @@ interface StatusBarProps {
   activeQuestion: Question | null
   onStopPoll: () => void
   onCloseQuestion: () => void
+  /** Démarre/arrête le timer de durée (bouton sur la case Durée). */
+  onToggleTimer: () => void
 }
 
 export function StatusBar({
   screen,
-  eventStartAt,
-  screenOnline,
-  latencyMs,
   activePoll,
   activePollResults,
   activeQuestion,
   onStopPoll,
   onCloseQuestion,
+  onToggleTimer,
 }: StatusBarProps) {
   const now = useClock()
   const overlayLabel = screen.overlay ? OVERLAY_LABELS[screen.overlay.type] : null
@@ -147,29 +144,32 @@ export function StatusBar({
           </span>
         </div>
 
-        {/* Connexion EP + latence */}
-        <div className="flex flex-col items-center justify-center border-l border-white/10 px-4">
-          <span className="text-xs tracking-[0.2em] text-white/50 uppercase">EP</span>
-          <span className="flex items-center gap-1.5 text-sm">
-            <span
-              className={`inline-block h-2 w-2 rounded-full ${
-                screenOnline ? 'bg-emerald-400' : 'bg-red-400'
-              }`}
-            />
-            {latencyMs !== null ? `${latencyMs}ms` : '—'}
-          </span>
-        </div>
-
         <div className="flex flex-col items-center justify-center border-l border-white/10 px-5">
           <span className="text-xs tracking-[0.2em] text-white/50 uppercase">Heure</span>
           <span className="tabular text-lg font-semibold">
             {now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')}
           </span>
         </div>
-        <div className="flex flex-col items-center justify-center border-l border-white/10 px-5">
-          <span className="text-xs tracking-[0.2em] text-white/50 uppercase">Durée</span>
-          <span className="tabular text-lg font-semibold">{formatDuration(eventStartAt, now)}</span>
-        </div>
+        {/* Durée : timer manuel — tap pour démarrer/arrêter */}
+        <button
+          type="button"
+          onClick={onToggleTimer}
+          className="flex flex-col items-center justify-center border-l border-white/10 px-5 active:bg-white/5"
+        >
+          <span className="flex items-center gap-1.5 text-xs tracking-[0.2em] text-white/50 uppercase">
+            Durée
+            <span aria-hidden className="text-[10px]">
+              {screen.timerStartedAt ? '■' : '▶'}
+            </span>
+          </span>
+          <span
+            className={`tabular text-lg font-semibold ${
+              screen.timerStartedAt ? '' : 'text-white/40'
+            }`}
+          >
+            {formatDuration(screen.timerStartedAt, now)}
+          </span>
+        </button>
       </div>
     </div>
   )

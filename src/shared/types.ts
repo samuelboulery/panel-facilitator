@@ -20,6 +20,8 @@ export interface ScreenState {
   overlay: Overlay | null
   speakersBannerVisible: boolean
   qrVisible: boolean
+  /** Timer de durée manuel de l'IR (null = arrêté). N'apparaît pas sur l'EP. */
+  timerStartedAt: string | null
 }
 
 export type PollKind = 'poll' | 'versus'
@@ -76,6 +78,8 @@ export interface Definition {
   term: string
   definition: string
   sortOrder: number
+  /** Déjà affichée pendant l'événement — ne se montre qu'une fois. */
+  used: boolean
 }
 
 export interface Question {

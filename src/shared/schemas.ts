@@ -20,6 +20,7 @@ export const screenStateRowSchema = z
     overlay: overlaySchema.nullable(),
     speakers_banner_visible: z.boolean(),
     qr_visible: z.boolean(),
+    timer_started_at: z.string().nullable().default(null),
   })
   .transform(
     (row): ScreenState => ({
@@ -29,6 +30,7 @@ export const screenStateRowSchema = z
       overlay: row.overlay,
       speakersBannerVisible: row.speakers_banner_visible,
       qrVisible: row.qr_visible,
+      timerStartedAt: row.timer_started_at,
     }),
   )
 
@@ -124,12 +126,14 @@ export const definitionRowSchema = z
     term: z.string(),
     definition: z.string(),
     sort_order: z.number(),
+    used: z.boolean().default(false),
   })
   .transform((r) => ({
     id: r.id,
     term: r.term,
     definition: r.definition,
     sortOrder: r.sort_order,
+    used: r.used,
   }))
 
 export const questionRowSchema = z

@@ -1,39 +1,52 @@
 // Vue Gestion (centre, défaut) — maquettes iPad 13/16/17/18.
-// Définitions en chips (haut), Questions en liste (gauche), Sondages et Votes
-// (droite). Toute action d'affichage passe par la modale 3 s (LaunchModal).
-// La machine à états refuse les conflits de priorité (toast via control).
+// Définitions en chips dragables (génération LLM via « + », usage unique),
+// Questions en liste dragable (création via « + », disparaissent une fois
+// posées), Sondages et Votes en piles dragables. Toute action d'affichage
+// passe par la modale 3 s ; la machine à états refuse les conflits (toast).
 import { useState } from 'react'
 import type { ControlSession } from '../../../realtime/mutations'
 import * as mutations from '../../../realtime/mutations'
-import type { EventData } from '../../../realtime/eventData'
-import type { Poll, Question } from '../../../shared/types'
+import type { Definition, Poll, Question } from '../../../shared/types'
 import type { ControlState } from '../hooks/useControlState'
 import type { LaunchPayload } from '../components/LaunchModal'
 import { AdHocPollModal } from '../components/AdHocPollModal'
+import { ReorderableChips } from '../components/ReorderableChips'
+import { ReorderableList } from '../components/ReorderableList'
 
 interface GestionViewProps {
-  data: EventData
   control: ControlState
   session: ControlSession
   questions: Question[]
   polls: Poll[]
+  definitions: Definition[]
   onLaunch: (payload: LaunchPayload) => void
 }
 
 function SectionCard({
   title,
-  action,
+  onAdd,
+  addLabel,
   children,
 }: {
   title: string
-  action?: React.ReactNode
+  onAdd?: () => void
+  addLabel?: string
   children: React.ReactNode
 }) {
   return (
     <section className="rounded-2xl bg-control-panel p-3">
       <div className="mb-2 flex items-center justify-between px-1">
         <h2 className="font-mono text-sm tracking-wide text-control-dim">{title}</h2>
-        {action}
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            aria-label={addLabel}
+            className="px-2 font-mono text-lg leading-none text-control-dim active:scale-90"
+          >
+            +
+          </button>
+        )}
       </div>
       {children}
     </section>
@@ -41,28 +54,39 @@ function SectionCard({
 }
 
 export function GestionView({
-  data,
   control,
   session,
   questions,
   polls,
+  definitions,
   onLaunch,
 }: GestionViewProps) {
   const [adHocOpen, setAdHocOpen] = useState<'poll' | 'versus' | null>(null)
+  const [newQuestion, setNewQuestion] = useState<string | null>(null)
+  const [newTerm, setNewTerm] = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
 
-  const visibleQuestions = questions.filter((q) => q.status !== 'archived')
+  // Posées (done) et archivées disparaissent ; définitions déjà affichées aussi.
+  const visibleQuestions = questions.filter(
+    (q) => q.status !== 'archived' && q.status !== 'done',
+  )
+  const availableDefinitions = definitions.filter((d) => !d.used)
   const sondages = polls.filter((p) => p.kind === 'poll' && p.status !== 'archived')
   const votes = polls.filter((p) => p.kind === 'versus' && p.status !== 'archived')
   const overlay = control.screen.overlay
 
   const launchDefinition = (id: string) => {
-    const def = data.definitions.find((d) => d.id === id)
+    const def = availableDefinitions.find((d) => d.id === id)
     if (!def) return
     onLaunch({
       label: 'Lancement de la définition',
       title: def.term,
       body: def.definition,
-      onConfirm: () => control.showOverlay({ type: 'definition', id }),
+      onConfirm: () => {
+        control.showOverlay({ type: 'definition', id })
+        // Usage unique : la chip disparaît de la liste dès le lancement.
+        mutations.setDefinitionUsed(session, id, true).catch(() => undefined)
+      },
     })
   }
 
@@ -87,157 +111,177 @@ export function GestionView({
         mutations
           .setPollStatus(session, poll.id, 'live')
           .then(() => control.showOverlay({ type: 'poll', id: poll.id }))
-          .catch(() => undefined) // l'échec remonte en toast via useControlState au prochain état
+          .catch(() => undefined)
       },
     })
   }
 
-  const archiveQuestion = (question: Question) => {
-    mutations.setQuestionStatus(session, question.id, 'archived').catch(() => undefined)
+  const submitNewQuestion = () => {
+    const text = newQuestion?.trim()
+    if (!text) return
+    mutations.createQuestion(session, text).catch(() => undefined)
+    setNewQuestion(null)
   }
 
-  const togglePin = (question: Question) => {
-    mutations.setQuestionPinned(session, question.id, !question.pinned).catch(() => undefined)
+  const submitNewTerm = async () => {
+    const term = newTerm?.trim()
+    if (!term || generating) return
+    setGenerating(true)
+    try {
+      await mutations.generateDefinition(session, term)
+      setNewTerm(null)
+    } catch {
+      // L'erreur reste discrète : le champ garde le terme pour réessayer.
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const reorder = (table: mutations.ReorderableTable) => (ids: string[]) => {
+    mutations.reorderList(session, table, ids).catch(() => undefined)
+  }
+
+  // Le reorder des polls porte sur la table entière : recoller TOUS les autres
+  // (y compris archivés) pour garder des sort_order cohérents.
+  const reorderPolls = (kind: 'poll' | 'versus') => (ids: string[]) => {
+    const others = polls.filter((p) => p.kind !== kind).map((p) => p.id)
+    const ordered = kind === 'poll' ? [...ids, ...others] : [...others, ...ids]
+    mutations.reorderList(session, 'polls', ordered).catch(() => undefined)
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Définitions — chips */}
-      <SectionCard title="Définitions">
-        <div className="flex flex-wrap gap-2">
-          {data.definitions.map((def) => {
-            const active = overlay?.type === 'definition' && overlay.id === def.id
-            return (
-              <button
-                key={def.id}
-                type="button"
-                onClick={() => launchDefinition(def.id)}
-                className={`rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm transition active:scale-95 ${
-                  active
-                    ? 'bg-control-accent text-white'
-                    : 'bg-control-card text-control-ink'
-                }`}
-              >
-                {def.term}
-              </button>
-            )
-          })}
-          {data.definitions.length === 0 && (
-            <p className="px-1 py-2 text-sm text-control-dim">
-              Aucune définition — à préparer dans le backoffice.
-            </p>
-          )}
-        </div>
+      {/* Définitions — chips dragables, génération LLM */}
+      <SectionCard
+        title="Définitions"
+        addLabel="Générer une définition"
+        onAdd={() => setNewTerm((v) => (v === null ? '' : v))}
+      >
+        {newTerm !== null && (
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              value={newTerm}
+              autoFocus
+              onChange={(e) => setNewTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void submitNewTerm()}
+              maxLength={60}
+              placeholder="Terme à définir (génération auto)"
+              className="flex-1 rounded-xl bg-control-card px-3.5 py-2.5 text-sm outline-control-accent"
+            />
+            <button
+              type="button"
+              disabled={generating}
+              onClick={() => void submitNewTerm()}
+              className="rounded-xl bg-control-ink px-4 py-2.5 font-mono text-sm text-white active:scale-95 disabled:opacity-50"
+            >
+              {generating ? 'Génération…' : 'Générer'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewTerm(null)}
+              className="px-2 font-mono text-sm text-control-dim active:scale-95"
+            >
+              Annuler
+            </button>
+          </div>
+        )}
+        <ReorderableChips
+          items={availableDefinitions.map((d) => ({ id: d.id, label: d.term }))}
+          activeId={overlay?.type === 'definition' ? overlay.id : null}
+          onTap={launchDefinition}
+          onReorder={reorder('definitions')}
+        />
+        {availableDefinitions.length === 0 && newTerm === null && (
+          <p className="px-1 py-2 text-sm text-control-dim">
+            Plus de définition disponible — « + » pour en générer une.
+          </p>
+        )}
       </SectionCard>
 
       <div className="grid grid-cols-2 gap-3">
-        {/* Questions — préparées + audience */}
-        <SectionCard title="Questions">
-          <ul className="flex flex-col gap-2">
-            {visibleQuestions.map((question) => {
-              const active = overlay?.type === 'question' && overlay.id === question.id
-              const done = question.status === 'done'
-              return (
-                <li
-                  key={question.id}
-                  className={`rounded-xl border bg-control-card p-3 shadow-sm transition ${
-                    active
-                      ? 'border-control-accent'
-                      : question.pinned
-                        ? 'border-control-accent/40'
-                        : 'border-transparent'
-                  } ${done ? 'opacity-45' : ''}`}
-                >
-                  <button
-                    type="button"
-                    className="w-full text-left text-sm leading-snug"
-                    onClick={() => !done && launchQuestion(question)}
-                  >
-                    {question.text}
-                  </button>
-                  <div className="mt-2 flex items-center gap-2">
-                    {question.source === 'audience' && (
-                      <span className="rounded bg-control-accent px-1.5 py-0.5 font-mono text-[10px] text-white">
-                        Public
-                      </span>
-                    )}
-                    {done && (
-                      <span className="font-mono text-[10px] text-control-dim uppercase">
-                        Posée
-                      </span>
-                    )}
-                    <span className="flex-1" />
-                    <button
-                      type="button"
-                      onClick={() => togglePin(question)}
-                      className={`rounded px-2 py-1 font-mono text-[11px] active:scale-95 ${
-                        question.pinned
-                          ? 'bg-control-accent/15 text-control-accent'
-                          : 'text-control-dim'
-                      }`}
-                    >
-                      {question.pinned ? 'Épinglée' : 'Épingler'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => archiveQuestion(question)}
-                      className="rounded px-2 py-1 font-mono text-[11px] text-control-dim active:scale-95"
-                    >
-                      Archiver
-                    </button>
-                  </div>
-                </li>
-              )
-            })}
-            {visibleQuestions.length === 0 && (
-              <p className="px-1 py-2 text-sm text-control-dim">
-                Aucune question — le QR code alimente cette liste en direct.
-              </p>
+        {/* Questions — préparées + audience, dragables */}
+        <SectionCard
+          title="Questions"
+          addLabel="Ajouter une question"
+          onAdd={() => setNewQuestion((v) => (v === null ? '' : v))}
+        >
+          {newQuestion !== null && (
+            <div className="mb-2 flex items-center gap-2">
+              <input
+                value={newQuestion}
+                autoFocus
+                onChange={(e) => setNewQuestion(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitNewQuestion()}
+                maxLength={300}
+                placeholder="Nouvelle question préparée"
+                className="flex-1 rounded-xl bg-control-card px-3.5 py-2.5 text-sm outline-control-accent"
+              />
+              <button
+                type="button"
+                onClick={submitNewQuestion}
+                className="rounded-xl bg-control-ink px-4 py-2.5 font-mono text-sm text-white active:scale-95"
+              >
+                Ajouter
+              </button>
+            </div>
+          )}
+          <ReorderableList
+            items={visibleQuestions}
+            onReorder={reorder('questions')}
+            renderItem={(question) => (
+              <QuestionCard
+                question={question}
+                active={overlay?.type === 'question' && overlay.id === question.id}
+                onLaunch={() => launchQuestion(question)}
+                onPin={() =>
+                  mutations
+                    .setQuestionPinned(session, question.id, !question.pinned)
+                    .catch(() => undefined)
+                }
+                onArchive={() =>
+                  mutations
+                    .setQuestionStatus(session, question.id, 'archived')
+                    .catch(() => undefined)
+                }
+              />
             )}
-          </ul>
+          />
+          {visibleQuestions.length === 0 && newQuestion === null && (
+            <p className="px-1 py-2 text-sm text-control-dim">
+              Aucune question — le QR code alimente cette liste en direct.
+            </p>
+          )}
         </SectionCard>
 
         <div className="flex flex-col gap-3">
           {/* Sondages */}
           <SectionCard
             title="Sondages"
-            action={
-              <button
-                type="button"
-                onClick={() => setAdHocOpen('poll')}
-                className="px-2 font-mono text-lg leading-none text-control-dim active:scale-90"
-                aria-label="Créer un sondage"
-              >
-                +
-              </button>
-            }
+            addLabel="Créer un sondage"
+            onAdd={() => setAdHocOpen('poll')}
           >
-            <div className="flex flex-wrap gap-2">
-              {sondages.map((poll) => (
-                <PollChip key={poll.id} poll={poll} overlayActive={overlay?.id === poll.id} onLaunch={launchPoll} />
-              ))}
-            </div>
+            <ReorderableList
+              items={sondages}
+              onReorder={reorderPolls('poll')}
+              renderItem={(poll) => (
+                <PollCard poll={poll} overlayActive={overlay?.id === poll.id} onLaunch={launchPoll} />
+              )}
+            />
           </SectionCard>
 
           {/* Votes */}
           <SectionCard
             title="Votes"
-            action={
-              <button
-                type="button"
-                onClick={() => setAdHocOpen('versus')}
-                className="px-2 font-mono text-lg leading-none text-control-dim active:scale-90"
-                aria-label="Créer un vote"
-              >
-                +
-              </button>
-            }
+            addLabel="Créer un vote"
+            onAdd={() => setAdHocOpen('versus')}
           >
-            <div className="flex flex-wrap gap-2">
-              {votes.map((poll) => (
-                <PollChip key={poll.id} poll={poll} overlayActive={overlay?.id === poll.id} onLaunch={launchPoll} />
-              ))}
-            </div>
+            <ReorderableList
+              items={votes}
+              onReorder={reorderPolls('versus')}
+              renderItem={(poll) => (
+                <PollCard poll={poll} overlayActive={overlay?.id === poll.id} onLaunch={launchPoll} />
+              )}
+            />
           </SectionCard>
 
           {/* Contrôles EP */}
@@ -275,7 +319,61 @@ export function GestionView({
   )
 }
 
-function PollChip({
+function QuestionCard({
+  question,
+  active,
+  onLaunch,
+  onPin,
+  onArchive,
+}: {
+  question: Question
+  active: boolean
+  onLaunch: () => void
+  onPin: () => void
+  onArchive: () => void
+}) {
+  return (
+    <div
+      className={`rounded-xl border bg-control-card p-3 shadow-sm transition ${
+        active
+          ? 'border-control-accent'
+          : question.pinned
+            ? 'border-control-accent/40'
+            : 'border-transparent'
+      }`}
+    >
+      <button type="button" className="w-full text-left text-sm leading-snug" onClick={onLaunch}>
+        {question.text}
+      </button>
+      <div className="mt-2 flex items-center gap-2">
+        {question.source === 'audience' && (
+          <span className="rounded bg-control-accent px-1.5 py-0.5 font-mono text-[10px] text-white">
+            Public
+          </span>
+        )}
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={onPin}
+          className={`rounded px-2 py-1 font-mono text-[11px] active:scale-95 ${
+            question.pinned ? 'bg-control-accent/15 text-control-accent' : 'text-control-dim'
+          }`}
+        >
+          {question.pinned ? 'Épinglée' : 'Épingler'}
+        </button>
+        <button
+          type="button"
+          onClick={onArchive}
+          className="rounded px-2 py-1 font-mono text-[11px] text-control-dim active:scale-95"
+        >
+          Archiver
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PollCard({
   poll,
   overlayActive,
   onLaunch,
@@ -290,7 +388,7 @@ function PollChip({
     <button
       type="button"
       onClick={() => !live && onLaunch(poll)}
-      className={`rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm transition active:scale-95 ${
+      className={`w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium shadow-sm transition active:scale-[0.98] ${
         live || overlayActive
           ? 'bg-control-accent text-white'
           : closed

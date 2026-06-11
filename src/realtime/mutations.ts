@@ -25,6 +25,7 @@ type ScreenStatePatch = Partial<{
   overlay: Overlay | null
   speakers_banner_visible: boolean
   qr_visible: boolean
+  timer_started_at: string | null
 }>
 
 /** Log détaillé côté console, message générique côté UI (pas de fuite d'erreur DB). */
@@ -48,6 +49,11 @@ export const setMode = (s: ControlSession, mode: Mode) =>
 export const setIntroSlide = (s: ControlSession, index: number) =>
   patchScreenState(s, { intro_slide_index: index })
 
+/** Entrée en mode intro directement sur une slide donnée — UN SEUL patch
+ *  (deux RPCs séquentiels créeraient une course mode/index côté serveur). */
+export const setIntroMode = (s: ControlSession, index: number) =>
+  patchScreenState(s, { mode: 'intro', intro_slide_index: index })
+
 export const setMainContent = (s: ControlSession, contentId: string | null) =>
   patchScreenState(s, { main_content_id: contentId })
 
@@ -62,6 +68,10 @@ export const setSpeakersBannerVisible = (s: ControlSession, visible: boolean) =>
 
 export const setQrVisible = (s: ControlSession, visible: boolean) =>
   patchScreenState(s, { qr_visible: visible })
+
+/** Timer de durée manuel (barre d'état IR) : ISO pour démarrer, null pour arrêter. */
+export const setTimerStartedAt = (s: ControlSession, startedAt: string | null) =>
+  patchScreenState(s, { timer_started_at: startedAt })
 
 export async function setPollStatus(
   s: ControlSession,
@@ -118,6 +128,46 @@ export async function setQuestionPinned(
     p_slug: s.slug, p_pin: s.pin, p_question_id: questionId, p_pinned: pinned,
   })
   if (error) throw rpcError('Épinglage refusé', error)
+}
+
+export async function createQuestion(s: ControlSession, text: string): Promise<void> {
+  const { error } = await supabase.rpc('control_create_question', {
+    p_slug: s.slug, p_pin: s.pin, p_text: text,
+  })
+  if (error) throw rpcError('Création de question refusée', error)
+}
+
+export async function setDefinitionUsed(
+  s: ControlSession,
+  definitionId: string,
+  used: boolean,
+): Promise<void> {
+  const { error } = await supabase.rpc('control_set_definition_used', {
+    p_slug: s.slug, p_pin: s.pin, p_definition_id: definitionId, p_used: used,
+  })
+  if (error) throw rpcError('Marquage de définition refusé', error)
+}
+
+export type ReorderableTable = 'questions' | 'definitions' | 'polls'
+
+/** Persiste l'ordre après un drag & drop (whitelist côté serveur). */
+export async function reorderList(
+  s: ControlSession,
+  table: ReorderableTable,
+  ids: string[],
+): Promise<void> {
+  const { error } = await supabase.rpc('control_reorder', {
+    p_slug: s.slug, p_pin: s.pin, p_table: table, p_ids: ids,
+  })
+  if (error) throw rpcError('Réordonnancement refusé', error)
+}
+
+/** Génère une définition courte par LLM (Edge Function — clé API côté serveur). */
+export async function generateDefinition(s: ControlSession, term: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('define-term', {
+    body: { slug: s.slug, pin: s.pin, term },
+  })
+  if (error) throw rpcError('Génération de définition échouée', error)
 }
 
 export async function saveNotes(s: ControlSession, contentMd: string): Promise<void> {

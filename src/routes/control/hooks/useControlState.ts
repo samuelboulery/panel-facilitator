@@ -12,21 +12,17 @@ import type { ScreenState, Mode, Overlay } from '../../../shared/types'
 import type { ControlSession } from '../../../realtime/mutations'
 import * as mutations from '../../../realtime/mutations'
 import { subscribeScreenState, type ConnectionStatus } from '../../../realtime/screenState'
-import { watchScreenPresence } from '../../../realtime/presence'
-import { measureLatency } from '../../../realtime/controlData'
-
-const LATENCY_INTERVAL_MS = 10_000
 
 export interface ControlState {
   screen: ScreenState
   connection: ConnectionStatus
-  screenOnline: boolean
-  latencyMs: number | null
   /** Dernier refus de la machine à états — à afficher en toast. */
   lastError: string | null
   clearError: () => void
   setMode: (mode: Mode) => void
   setIntroSlide: (index: number) => void
+  /** Entre en mode intro directement sur une slide (un seul RPC, pas de course). */
+  goToIntroSlide: (index: number) => void
   setMainContent: (contentId: string | null) => void
   showOverlay: (overlay: Overlay) => void
   closeOverlay: () => void
@@ -37,8 +33,6 @@ export interface ControlState {
 export function useControlState(session: ControlSession): ControlState {
   const [screen, setScreen] = useState<ScreenState>(initialScreenState)
   const [connection, setConnection] = useState<ConnectionStatus>('connecting')
-  const [screenOnline, setScreenOnline] = useState(false)
-  const [latencyMs, setLatencyMs] = useState<number | null>(null)
   const [lastError, setLastError] = useState<string | null>(null)
   // L'état courant vit dans une ref pour valider sans recréer les callbacks.
   const screenRef = useRef(screen)
@@ -50,26 +44,10 @@ export function useControlState(session: ControlSession): ControlState {
       onState: setScreen,
       onConnectionChange: setConnection,
     })
-    const presence = watchScreenPresence(session.eventId, setScreenOnline)
     return () => {
       sub.unsubscribe()
-      presence.leave()
     }
   }, [session.eventId])
-
-  useEffect(() => {
-    let disposed = false
-    const ping = async () => {
-      const ms = await measureLatency()
-      if (!disposed) setLatencyMs(ms)
-    }
-    void ping()
-    const id = setInterval(ping, LATENCY_INTERVAL_MS)
-    return () => {
-      disposed = true
-      clearInterval(id)
-    }
-  }, [])
 
   /**
    * Valide l'action localement (machine à états), applique optimistiquement,
@@ -94,13 +72,17 @@ export function useControlState(session: ControlSession): ControlState {
   return {
     screen,
     connection,
-    screenOnline,
-    latencyMs,
     lastError,
     clearError: useCallback(() => setLastError(null), []),
     setMode: useCallback(
       (mode: Mode) =>
-        dispatch({ type: 'SET_MODE', mode }, () => mutations.setMode(session, mode)),
+        dispatch({ type: 'SET_MODE', mode }, () =>
+          // La machine remet l'index intro à 0 côté client : le serveur doit
+          // suivre dans le MÊME patch (sinon l'EP garderait l'ancien index).
+          mode === 'intro'
+            ? mutations.setIntroMode(session, 0)
+            : mutations.setMode(session, mode),
+        ),
       [dispatch, session],
     ),
     setIntroSlide: useCallback(
@@ -109,6 +91,29 @@ export function useControlState(session: ControlSession): ControlState {
           mutations.setIntroSlide(session, index),
         ),
       [dispatch, session],
+    ),
+    goToIntroSlide: useCallback(
+      (index: number) => {
+        // Validation en deux temps (mode puis index), mutation en un seul RPC.
+        const afterMode =
+          screenRef.current.mode === 'intro'
+            ? { ok: true as const, state: screenRef.current }
+            : applyAction(screenRef.current, { type: 'SET_MODE', mode: 'intro' })
+        if (!afterMode.ok) {
+          setLastError(afterMode.reason)
+          return
+        }
+        const afterIndex = applyAction(afterMode.state, { type: 'SET_INTRO_SLIDE', index })
+        if (!afterIndex.ok) {
+          setLastError(afterIndex.reason)
+          return
+        }
+        setScreen(afterIndex.state)
+        mutations.setIntroMode(session, index).catch((err: unknown) => {
+          setLastError(err instanceof Error ? err.message : 'Erreur réseau')
+        })
+      },
+      [session],
     ),
     setMainContent: useCallback(
       (contentId: string | null) =>

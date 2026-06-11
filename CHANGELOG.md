@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## Repasse IR (11 juin 2026)
+
+### Livré (9 retours utilisateur)
+
+- **Vue Slides = carrousel de présentation** (maquette iPad 15) : deck unifié Attente → slides intro → contenus dynamiques → Outro ; grande preview centrale, cartes adjacentes en peek, swipe/tap/flèches pilotent l'EP (position dérivée de `screen_state`). Masquage speaker sur la carte.
+- **Navigation par swipe pur** : plus d'onglets — les vues adjacentes dépassent (~4 %) de chaque côté comme poignées (tap sur le peek = naviguer).
+- **« + » sur tous les blocs** : questions (création inline → `control_create_question`), définitions (génération LLM), sondages/votes (existant).
+- **Définitions par LLM** : Edge Function `define-term` (Claude **Haiku 4.5**, clé API côté serveur uniquement, auth PIN avant tout appel, `verify_jwt` désactivé car auth applicative). Saisir un mot → définition courte FR insérée → chip en temps réel (table `definitions` ajoutée au realtime).
+- **Définitions à usage unique** : `used` marqué au lancement, la chip disparaît (RPC `control_set_definition_used`).
+- **Timer Durée manuel** : `screen_state.timer_started_at`, bouton ▶/■ sur la case Durée de la barre d'état.
+- **Questions posées retirées** de la liste (statut `done` filtré).
+- **Section « EP » supprimée** de la barre d'état (latence/presence IR nettoyées).
+- **Drag & drop persisté** : listes questions/sondages/votes (Reorder framer-motion + handle ⠿), chips définitions (grid-reorder maison par proximité de centres) ; RPC `control_reorder` avec whitelist de tables.
+
+### Fixes de revue
+
+- **Course mode/index intro corrigée** : entrer en intro envoyait l'index seulement côté client optimiste (le serveur gardait l'ancien) et SlidesView aurait émis 2 RPCs concurrents — désormais `setIntroMode` = un seul patch `{mode, intro_slide_index}` ; `goToIntroSlide` valide en 2 temps, mute en 1 RPC.
+- ReorderableList : ordre final lu via ref (jamais de closure périmée) ; chips : refs filtrées sur la liste courante, distance de drag réinitialisée ; reorder polls inclut les archivés (sort_order cohérents).
+
+### Setup requis
+
+- `supabase/functions/.env` : `ANTHROPIC_API_KEY=sk-ant-…` (local) ; en cloud : `supabase secrets set ANTHROPIC_API_KEY=…`. Lancer la fonction localement : `supabase functions serve define-term --env-file supabase/functions/.env`.
+
 ## Sprint 5 — Qualité & résilience (10 juin 2026)
 
 ### Livré

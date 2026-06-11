@@ -2,15 +2,20 @@
 // Les listes (questions, sondages) sont re-fetchées intégralement à chaque
 // changement temps réel — volumes V1 faibles (une salle), simplicité > delta.
 import { supabase } from './client'
-import { pollRowSchema, questionRowSchema, speakerRowSchema } from '../shared/schemas'
-import type { Poll, Question, Speaker } from '../shared/types'
+import {
+  definitionRowSchema,
+  pollRowSchema,
+  questionRowSchema,
+  speakerRowSchema,
+} from '../shared/schemas'
+import type { Definition, Poll, Question, Speaker } from '../shared/types'
 
 export interface ListSubscription {
   unsubscribe: () => void
 }
 
 function subscribeList<T>(
-  table: 'questions' | 'polls' | 'speakers',
+  table: 'questions' | 'polls' | 'speakers' | 'definitions',
   eventId: string,
   schema: { safeParse: (v: unknown) => { success: boolean; data?: T } },
   onList: (rows: T[]) => void,
@@ -74,6 +79,14 @@ export function subscribePollList(
   return subscribeList('polls', eventId, pollRowSchema, onList)
 }
 
+/** Définitions en temps réel — génération LLM et usage unique (repasse IR). */
+export function subscribeDefinitionList(
+  eventId: string,
+  onList: (definitions: Definition[]) => void,
+): ListSubscription {
+  return subscribeList('definitions', eventId, definitionRowSchema, onList)
+}
+
 /** Speakers en temps réel — masquage live depuis l'IR (PRD 5.3.4). */
 export function subscribeSpeakerList(
   eventId: string,
@@ -92,13 +105,3 @@ export async function fetchNotes(eventId: string): Promise<string> {
   return (data as { content_md: string }).content_md
 }
 
-/**
- * Mesure de latence : durée d'un aller-retour PostgREST minimal.
- * Affichée dans la barre d'état de l'IR (exigence P2).
- */
-export async function measureLatency(): Promise<number | null> {
-  const startedAt = performance.now()
-  const { error } = await supabase.from('events_public').select('id').limit(1)
-  if (error) return null
-  return Math.round(performance.now() - startedAt)
-}
