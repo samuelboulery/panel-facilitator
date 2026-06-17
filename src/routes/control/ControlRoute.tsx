@@ -33,6 +33,10 @@ const storedSessionSchema = z.object({
   eventId: z.string().uuid(),
 })
 
+// Durée d'affichage auto d'une définition avant fermeture (laisse le temps de lire).
+// ponytail: constante fixe, à ajuster si besoin (pas de calcul selon longueur du texte).
+const DEFINITION_AUTO_DISMISS_MS = 12_000
+
 const VIEW_COUNT = 3 // Slides | Gestion | Notes
 // Peek : les vues adjacentes dépassent et servent de poignées de swipe (maquettes 13/14/15).
 const PEEK_PCT = 4
@@ -107,6 +111,23 @@ function ControlShell({ session }: { session: ControlSession }) {
     mutations.setQuestionStatus(session, activeQuestion.id, 'done').catch(() => undefined)
   }, [activeQuestion, control, session])
 
+  const overlay = control.screen.overlay
+  const activeDefinition =
+    overlay?.type === 'definition'
+      ? (definitions.find((d) => d.id === overlay.id) ?? null)
+      : null
+
+  // Fermeture auto de la définition après lecture. Le timer redémarre à chaque
+  // nouvelle définition (clé = overlay.id) ; cleanup l'annule si la régie ferme
+  // avant ou lance un autre overlay.
+  const definitionOverlayId = overlay?.type === 'definition' ? overlay.id : null
+  const { closeOverlay } = control
+  useEffect(() => {
+    if (!definitionOverlayId) return
+    const id = setTimeout(() => closeOverlay(), DEFINITION_AUTO_DISMISS_MS)
+    return () => clearTimeout(id)
+  }, [definitionOverlayId, closeOverlay])
+
   if (!data) {
     return <div className="flex h-dvh items-center justify-center bg-control-bg" />
   }
@@ -174,8 +195,10 @@ function ControlShell({ session }: { session: ControlSession }) {
         activePoll={activePoll}
         activePollResults={activePollResults}
         activeQuestion={activeQuestion}
+        activeDefinition={activeDefinition}
         onStopPoll={stopPoll}
         onCloseQuestion={closeQuestion}
+        onCloseDefinition={control.closeOverlay}
         onToggleTimer={() => {
           mutations
             .setTimerStartedAt(

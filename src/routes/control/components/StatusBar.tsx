@@ -4,7 +4,7 @@
 // « Arrêter le sondage » (iPad 18). Question active : « Retirer la question ».
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import type { Poll, PollResults, Question, ScreenState } from '../../../shared/types'
+import type { Definition, Poll, PollResults, Question, ScreenState } from '../../../shared/types'
 
 const MODE_LABELS: Record<ScreenState['mode'], string> = {
   attente: 'Attente',
@@ -40,8 +40,11 @@ interface StatusBarProps {
   activePollResults: PollResults
   /** Question actuellement en overlay, null sinon. */
   activeQuestion: Question | null
+  /** Définition actuellement en overlay, null sinon. */
+  activeDefinition: Definition | null
   onStopPoll: () => void
   onCloseQuestion: () => void
+  onCloseDefinition: () => void
   /** Démarre/arrête le timer de durée (bouton sur la case Durée). */
   onToggleTimer: () => void
 }
@@ -51,8 +54,10 @@ export function StatusBar({
   activePoll,
   activePollResults,
   activeQuestion,
+  activeDefinition,
   onStopPoll,
   onCloseQuestion,
+  onCloseDefinition,
   onToggleTimer,
 }: StatusBarProps) {
   const now = useClock()
@@ -127,6 +132,32 @@ export function StatusBar({
                 className="shrink-0 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95"
               >
                 Retirer la question
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Définition active : rappel + retrait (symétrie avec la question) */}
+      <AnimatePresence>
+        {screen.overlay?.type === 'definition' && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden border-b border-white/10"
+          >
+            <div className="flex items-center justify-between gap-4 px-5 py-2.5">
+              <p className="truncate text-sm text-white/80">
+                {activeDefinition?.term ?? 'Définition affichée'}
+              </p>
+              <button
+                type="button"
+                onClick={onCloseDefinition}
+                className="shrink-0 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95"
+              >
+                Retirer la définition
               </button>
             </div>
           </motion.div>
