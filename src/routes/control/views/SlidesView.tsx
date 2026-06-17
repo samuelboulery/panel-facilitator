@@ -9,8 +9,9 @@ import type { EventData } from '../../../realtime/eventData'
 import type { ControlSession } from '../../../realtime/mutations'
 import { setSpeakerHidden } from '../../../realtime/mutations'
 import { buildIntroSlides, clampIntroIndex, type IntroSlide } from '../../../shared/introSlides'
-import type { Content } from '../../../shared/types'
+import type { Content, ScreenState } from '../../../shared/types'
 import type { ControlState } from '../hooks/useControlState'
+import { StagePreview } from './StagePreview'
 
 type DeckSlide =
   | { kind: 'attente'; key: string; label: string; hint: string }
@@ -47,6 +48,31 @@ function buildDeck(data: EventData): DeckSlide[] {
     ),
     { kind: 'outro', key: 'outro', label: 'Outro', hint: 'Remerciements · sponsors' },
   ]
+}
+
+/** État EP synthétique pour le rendu d'aperçu d'une slide du deck. */
+function slideToState(slide: DeckSlide): ScreenState {
+  const base: ScreenState = {
+    mode: 'attente',
+    introSlideIndex: 0,
+    mainContentId: null,
+    overlay: null,
+    speakersBannerVisible: true,
+    qrVisible: false,
+    timerStartedAt: null,
+  }
+  switch (slide.kind) {
+    case 'attente':
+      return base
+    case 'intro':
+      return { ...base, mode: 'intro', introSlideIndex: slide.introIndex }
+    case 'dynamique':
+      return { ...base, mode: 'dynamique' }
+    case 'content':
+      return { ...base, mode: 'dynamique', mainContentId: slide.content.id }
+    case 'outro':
+      return { ...base, mode: 'outro' }
+  }
 }
 
 /** Position courante dans le deck, dérivée de l'état EP. */
@@ -122,7 +148,7 @@ export function SlidesView({
       {/* Carrousel : précédente | courante (grande) | suivante (maquette 15) */}
       <div className="relative flex min-h-[320px] flex-1 items-center justify-center overflow-hidden">
         {prev && (
-          <PeekCard side="left" slide={prev} onTap={() => goTo(index - 1)} />
+          <PeekCard side="left" slide={prev} data={data} onTap={() => goTo(index - 1)} />
         )}
 
         <motion.div
@@ -143,13 +169,13 @@ export function SlidesView({
               exit={{ opacity: 0, scale: 0.96 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             >
-              {current && <SlidePreview slide={current} large session={session} />}
+              {current && <SlidePreview slide={current} data={data} session={session} />}
             </motion.div>
           </AnimatePresence>
         </motion.div>
 
         {next && (
-          <PeekCard side="right" slide={next} onTap={() => goTo(index + 1)} />
+          <PeekCard side="right" slide={next} data={data} onTap={() => goTo(index + 1)} />
         )}
       </div>
 
@@ -198,64 +224,52 @@ export function SlidesView({
   )
 }
 
+// Carte adjacente : véritable aperçu EP réduit (raccord avec /screen), tronqué
+// par le débordement du carrousel pour l'effet « peek ».
 function PeekCard({
   side,
   slide,
+  data,
   onTap,
 }: {
   side: 'left' | 'right'
   slide: DeckSlide
+  data: EventData
   onTap: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onTap}
-      className={`absolute top-1/2 z-0 aspect-video w-[20%] -translate-y-1/2 overflow-hidden rounded-2xl bg-control-card opacity-70 shadow-sm transition active:scale-95 ${
+      className={`absolute top-1/2 z-0 w-[20%] -translate-y-1/2 overflow-hidden rounded-2xl opacity-70 shadow-sm transition active:scale-95 ${
         side === 'left' ? '-left-[8%]' : '-right-[8%]'
       }`}
       aria-label={slide.label}
     >
-      <span className="block truncate px-3 pt-3 text-left font-mono text-[10px] text-control-dim uppercase">
-        {slide.label}
-      </span>
+      <StagePreview data={data} state={slideToState(slide)} />
     </button>
   )
 }
 
+// Carte courante : aperçu EP plein cadre, identique au rendu /screen. Le libellé
+// de section et le bouton de masquage sont superposés (l'aperçu, display-only,
+// laisse passer swipe/tap du carrousel).
 function SlidePreview({
   slide,
-  large,
+  data,
   session,
 }: {
   slide: DeckSlide
-  large?: boolean
+  data: EventData
   session: ControlSession
 }) {
   return (
-    <div
-      className={`flex aspect-video w-full flex-col justify-between rounded-2xl bg-control-card p-5 shadow-md ${
-        large ? '' : 'pointer-events-none'
-      }`}
-    >
-      <p className="font-mono text-[11px] tracking-[0.2em] text-control-dim uppercase">
+    <div className="relative w-full overflow-hidden rounded-2xl shadow-md">
+      <StagePreview data={data} state={slideToState(slide)} />
+
+      <p className="absolute top-3 left-3 z-30 rounded bg-black/40 px-2 py-1 font-mono text-[11px] tracking-[0.2em] text-white/80 uppercase backdrop-blur-sm">
         {slide.hint}
       </p>
-
-      <div className="flex flex-1 items-center justify-center px-4 text-center">
-        {slide.kind === 'intro' && slide.intro.speaker?.photoUrl ? (
-          <div className="flex items-center gap-4">
-            <img
-              src={slide.intro.speaker.photoUrl}
-              alt=""
-              className="h-16 w-16 rounded-xl object-cover"
-            />
-            <p className="text-xl font-semibold">{slide.label}</p>
-          </div>
-        ) : (
-          <p className="text-xl font-semibold">{slide.label}</p>
-        )}
-      </div>
 
       {/* Masquage speaker en live (désistement) directement sur la carte */}
       {slide.kind === 'intro' && slide.intro.kind === 'speaker' && slide.intro.speaker && (
@@ -264,7 +278,7 @@ function SlidePreview({
           onClick={() =>
             void setSpeakerHidden(session, slide.intro.speaker!.id, true).catch(() => undefined)
           }
-          className="self-end rounded px-2 py-1 font-mono text-[11px] text-control-dim active:scale-95"
+          className="absolute right-3 bottom-3 z-30 rounded bg-black/40 px-2 py-1 font-mono text-[11px] text-white/80 backdrop-blur-sm active:scale-95"
         >
           Masquer ce speaker
         </button>
