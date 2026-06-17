@@ -1,0 +1,7 @@
+#!/bin/sh
+# ponytail: hook git natif versionné, pas de husky. Active une fois avec :
+#   git config core.hooksPath .githooks
+# Si l'équipe grandit ou veut du pre-commit granulaire, passer à husky/lint-staged.
+set -e
+pnpm lint
+pnpm test
