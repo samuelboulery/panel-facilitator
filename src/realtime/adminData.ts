@@ -98,6 +98,29 @@ export async function deleteRow(table: AdminTable, id: string): Promise<void> {
   if (error) throw new Error(`Suppression refusée : ${error.message}`)
 }
 
+// ── Réinitialisation de table ronde (RPC admin_reset_round) ──
+
+export type ResetScope = 'all' | 'definitions' | 'questions' | 'polls' | 'votes'
+
+/**
+ * Remet l'état « déjà lancé » à zéro (used/status/votes/overlay) sans supprimer
+ * le contenu configuré. RPC atomique multi-tables. Options : suppression des
+ * questions du public et des sondages/votes créés en direct.
+ */
+export async function resetRound(
+  eventId: string,
+  scope: ResetScope,
+  opts?: { deleteAudience?: boolean; deleteAdhoc?: boolean },
+): Promise<void> {
+  const { error } = await supabase.rpc('admin_reset_round', {
+    p_event_id: eventId,
+    p_scope: scope,
+    p_delete_audience: opts?.deleteAudience ?? false,
+    p_delete_adhoc: opts?.deleteAdhoc ?? false,
+  })
+  if (error) throw new Error(`Réinitialisation refusée : ${error.message}`)
+}
+
 // ── Upload d'images : redimensionnement + WebP côté client (PRD 7.2) ──
 
 async function toWebp(file: File, maxDim: number): Promise<Blob> {
