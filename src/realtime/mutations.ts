@@ -2,6 +2,11 @@
 // (aucune écriture directe de table depuis le client, voir migration initiale).
 // L'IR valide chaque action avec la machine à états (src/shared) AVANT d'appeler
 // ces fonctions ; la DB reste la source de vérité.
+//
+// Convention `.catch(() => undefined)` côté appelants (GestionView, ControlRoute…) :
+// échec RPC volontairement silencieux. Mono-opérateur V1 — l'état serveur fait foi
+// et se re-synchronise au prochain événement realtime ; rpcError() a déjà loggé le
+// détail en console. Pas de retry (D : simplicité > robustesse réseau V1).
 import { supabase } from './client'
 import type { Overlay, Mode, PollKind } from '../shared/types'
 

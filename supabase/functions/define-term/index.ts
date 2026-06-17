@@ -46,6 +46,22 @@ Deno.serve(async (req) => {
     return json({ error: "PIN invalide" }, 401);
   }
 
+  // Rate-limit : plafonne les générations LLM par event (un PIN valide ne doit
+  // pas pouvoir brûler des crédits Anthropic en boucle). 10 définitions / minute.
+  const RATE_LIMIT = 10;
+  const { count, error: countError } = await supabase
+    .from("definitions")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", eventId)
+    .gte("created_at", new Date(Date.now() - 60_000).toISOString());
+  if (countError) {
+    console.error("[define-term] comptage rate-limit échoué :", countError);
+    return json({ error: "Service indisponible" }, 503);
+  }
+  if ((count ?? 0) >= RATE_LIMIT) {
+    return json({ error: "Trop de définitions générées — patientez une minute" }, 429);
+  }
+
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
   let definition: string;

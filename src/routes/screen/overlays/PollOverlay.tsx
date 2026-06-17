@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { subscribePoll } from '../../../realtime/eventData'
+import { pollView } from '../../../shared/pollDisplay'
 import type { Poll, PollResults } from '../../../shared/types'
 
 const VERSUS_COLORS = ['var(--color-versus-a)', 'var(--color-versus-b)']
@@ -78,12 +79,8 @@ export function PollOverlay({ id }: { id: string }) {
 
   const isLive = poll.status === 'live'
   const isClosed = poll.status === 'closed'
-  // D2 : poll = temps réel dès le live ; versus = seulement clôturé.
-  const showBars =
-    (poll.kind === 'poll' && (isLive || (isClosed && poll.showResults))) ||
-    (poll.kind === 'versus' && isClosed && poll.showResults)
-  const hiddenAtClose = isClosed && !poll.showResults
-  const noVotes = isClosed && totalVotes(results) === 0
+  // D2 : décision de rendu centralisée dans src/shared/pollDisplay (testée).
+  const view = pollView(poll.status, poll.kind, poll.showResults, totalVotes(results))
 
   return (
     <div className="relative rounded-3xl border border-white/10 bg-ink-soft/95 p-10 shadow-2xl backdrop-blur-md">
@@ -96,13 +93,13 @@ export function PollOverlay({ id }: { id: string }) {
         {poll.question}
       </p>
 
-      {hiddenAtClose ? (
+      {view.kind === 'thanks' ? (
         <p className="text-2xl text-paper-dim">Merci pour vos votes !</p>
-      ) : noVotes && showBars ? (
+      ) : view.kind === 'no-votes' ? (
         <p className="text-2xl text-paper-dim">Aucun vote</p>
-      ) : showBars ? (
+      ) : view.kind === 'bars' ? (
         <ResultBars poll={poll} results={results} />
-      ) : poll.kind === 'versus' && isLive ? (
+      ) : view.kind === 'versus-live' ? (
         <VersusLive poll={poll} />
       ) : null}
 
