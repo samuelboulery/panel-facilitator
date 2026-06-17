@@ -1,10 +1,32 @@
 // Sections CRUD concrètes du backoffice — une par entité, toutes bâties sur
 // ListSection. Les champs reflètent le schéma (PLAN.md §3).
+import { useState } from 'react'
 import { ListSection } from './ListSection'
+import { ResetControl } from './ResetControl'
+import type { ResetScope } from '../../../realtime/adminData'
 import { ImageField, TextArea, TextField, Toggle } from '../components/fields'
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 const bool = (v: unknown) => v === true
+
+/** Barre de reset au-dessus d'une liste : remonte la clé pour refetch après reset. */
+function ResetBar({
+  eventId,
+  scope,
+  label,
+  onDone,
+}: {
+  eventId: string
+  scope: ResetScope
+  label: string
+  onDone: () => void
+}) {
+  return (
+    <div className="mb-3 flex justify-end">
+      <ResetControl eventId={eventId} scope={scope} label={label} onDone={onDone} />
+    </div>
+  )
+}
 
 interface SpeakerRow {
   id: string
@@ -170,8 +192,17 @@ interface DefinitionRow {
 }
 
 export function DefinitionsSection({ eventId }: { eventId: string }) {
+  const [refreshKey, setRefreshKey] = useState(0)
   return (
+    <>
+    <ResetBar
+      eventId={eventId}
+      scope="definitions"
+      label="Réinitialiser les définitions"
+      onDone={() => setRefreshKey((k) => k + 1)}
+    />
     <ListSection<DefinitionRow>
+      key={refreshKey}
       table="definitions"
       eventId={eventId}
       addLabel="Ajouter une définition"
@@ -189,6 +220,7 @@ export function DefinitionsSection({ eventId }: { eventId: string }) {
         </>
       )}
     />
+    </>
   )
 }
 
@@ -201,8 +233,17 @@ interface QuestionRow {
 }
 
 export function QuestionsSection({ eventId }: { eventId: string }) {
+  const [refreshKey, setRefreshKey] = useState(0)
   return (
+    <>
+    <ResetBar
+      eventId={eventId}
+      scope="questions"
+      label="Réinitialiser les questions"
+      onDone={() => setRefreshKey((k) => k + 1)}
+    />
     <ListSection<QuestionRow>
+      key={refreshKey}
       table="questions"
       eventId={eventId}
       addLabel="Ajouter une question préparée"
@@ -219,6 +260,7 @@ export function QuestionsSection({ eventId }: { eventId: string }) {
         <TextArea label="Question (300 car. max)" value={str(d.text)} onChange={(v) => set('text', v.slice(0, 300))} />
       )}
     />
+    </>
   )
 }
 
@@ -266,8 +308,17 @@ export function PollsSection({ eventId, kind }: { eventId: string; kind: 'poll' 
   // Différence métier (D2 / PRD 5.4.8) : versus = exactement 2 camps, résultats
   // masqués pendant le vote ; sondage = N options, résultats en temps réel.
   const isVersus = kind === 'versus'
+  const [refreshKey, setRefreshKey] = useState(0)
   return (
+    <>
+    <ResetBar
+      eventId={eventId}
+      scope={isVersus ? 'votes' : 'polls'}
+      label={isVersus ? 'Réinitialiser les votes' : 'Réinitialiser les sondages'}
+      onDone={() => setRefreshKey((k) => k + 1)}
+    />
     <ListSection<PollRow>
+      key={refreshKey}
       table="polls"
       eventId={eventId}
       filter={{ kind }}
@@ -344,5 +395,6 @@ export function PollsSection({ eventId, kind }: { eventId: string; kind: 'poll' 
         )
       }}
     />
+    </>
   )
 }

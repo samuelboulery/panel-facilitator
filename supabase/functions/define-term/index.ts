@@ -1,8 +1,13 @@
-// Architecture : génération de définition courte par LLM (Claude Haiku 4.5).
-// Edge Function = seule détentrice de ANTHROPIC_API_KEY — jamais côté client.
+// Architecture : génération de définition courte par LLM (DeepSeek deepseek-v4-flash).
+// Edge Function = seule détentrice de DEEPSEEK_API_KEY — jamais côté client.
 // Auth : PIN de session vérifié via control_auth avant tout appel modèle.
+// API DeepSeek = format OpenAI-compatible → simple fetch, pas de SDK.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import Anthropic from "npm:@anthropic-ai/sdk";
+
+const SYSTEM_PROMPT =
+  "Tu écris des définitions courtes pour l'écran d'une table ronde design devant une audience de designers et de curieux. " +
+  "Réponds UNIQUEMENT par la définition : 1 à 2 phrases, claires, accessibles, sans jargon inutile, en français. " +
+  "Pas de préambule, pas de répétition du terme en tête de phrase.";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,7 +52,7 @@ Deno.serve(async (req) => {
   }
 
   // Rate-limit : plafonne les générations LLM par event (un PIN valide ne doit
-  // pas pouvoir brûler des crédits Anthropic en boucle). 10 définitions / minute.
+  // pas pouvoir brûler des crédits DeepSeek en boucle). 10 définitions / minute.
   const RATE_LIMIT = 10;
   const { count, error: countError } = await supabase
     .from("definitions")
@@ -62,24 +67,29 @@ Deno.serve(async (req) => {
     return json({ error: "Trop de définitions générées — patientez une minute" }, 429);
   }
 
-  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
-
   let definition: string;
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 300,
-      system:
-        "Tu écris des définitions courtes pour l'écran d'une table ronde design devant une audience de designers et de curieux. " +
-        "Réponds UNIQUEMENT par la définition : 1 à 2 phrases, claires, accessibles, sans jargon inutile, en français. " +
-        "Pas de préambule, pas de répétition du terme en tête de phrase.",
-      messages: [{ role: "user", content: `Définis : ${term.trim()}` }],
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")!}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-v4-flash",
+        max_tokens: 300,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: `Définis : ${term.trim()}` },
+        ],
+      }),
     });
-    const block = message.content.find((b) => b.type === "text");
-    definition = block?.type === "text" ? block.text.trim() : "";
+    if (!res.ok) throw new Error(`DeepSeek ${res.status}`);
+    const data = await res.json();
+    definition = (data?.choices?.[0]?.message?.content ?? "").trim();
     if (!definition) throw new Error("Réponse vide");
   } catch (err) {
-    console.error("[define-term] appel Anthropic échoué :", err);
+    console.error("[define-term] appel DeepSeek échoué :", err);
     return json({ error: "Génération impossible — réessayer" }, 502);
   }
 

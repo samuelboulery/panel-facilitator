@@ -10,6 +10,7 @@ import {
   type AdminEvent,
 } from '../../realtime/adminData'
 import { TextField } from './components/fields'
+import { ResetControl } from './sections/ResetControl'
 import { ChecklistSection } from './sections/ChecklistSection'
 import { EventSection } from './sections/EventSection'
 import {
@@ -121,6 +122,8 @@ export default function AdminRoute() {
   const [event, setEvent] = useState<AdminEvent | null>(null)
   const [eventLoaded, setEventLoaded] = useState(false)
   const [section, setSection] = useState<SectionKey>('event')
+  // Incrémenté après un reset global → remonte la section active pour refetch.
+  const [resetKey, setResetKey] = useState(0)
 
   useEffect(() => watchAuth(setAuthed), [])
 
@@ -154,13 +157,22 @@ export default function AdminRoute() {
             </p>
             <h1 className="text-2xl font-bold">{event.title}</h1>
           </div>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="rounded-lg px-3 py-2 font-mono text-xs text-control-dim active:scale-95"
-          >
-            Déconnexion
-          </button>
+          <div className="flex items-center gap-2">
+            <ResetControl
+              eventId={event.id}
+              scope="all"
+              label="Tout réinitialiser"
+              variant="global"
+              onDone={() => setResetKey((k) => k + 1)}
+            />
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="rounded-lg px-3 py-2 font-mono text-xs text-control-dim active:scale-95"
+            >
+              Déconnexion
+            </button>
+          </div>
         </header>
 
         <nav className="mb-6 flex flex-wrap gap-1.5">
@@ -178,7 +190,7 @@ export default function AdminRoute() {
           ))}
         </nav>
 
-        <main className="rounded-3xl bg-control-panel p-5">
+        <main key={`${section}-${resetKey}`} className="rounded-3xl bg-control-panel p-5">
           {section === 'event' && <EventSection event={event} onSaved={reloadEvent} />}
           {section === 'speakers' && <SpeakersSection eventId={event.id} />}
           {section === 'sponsors' && <SponsorsSection eventId={event.id} />}
