@@ -250,12 +250,28 @@ function textToOptions(
     .map((label, i) => ({ id: existing?.[i]?.id ?? `opt-${i + 1}`, label }))
 }
 
+// Remplace une option par position en préservant son id (cf. textToOptions :
+// poll_votes référence option_id). Complète les positions manquantes.
+function setCampLabel(
+  options: { id: string; label: string }[],
+  index: number,
+  label: string,
+): { id: string; label: string }[] {
+  const next = [0, 1].map((i) => options[i] ?? { id: `opt-${i + 1}`, label: '' })
+  next[index] = { ...next[index], label }
+  return next
+}
+
 export function PollsSection({ eventId, kind }: { eventId: string; kind: 'poll' | 'versus' }) {
+  // Différence métier (D2 / PRD 5.4.8) : versus = exactement 2 camps, résultats
+  // masqués pendant le vote ; sondage = N options, résultats en temps réel.
+  const isVersus = kind === 'versus'
   return (
     <ListSection<PollRow>
       table="polls"
       eventId={eventId}
-      addLabel={kind === 'versus' ? 'Ajouter un vote' : 'Ajouter un sondage'}
+      filter={{ kind }}
+      addLabel={isVersus ? 'Ajouter un vote' : 'Ajouter un sondage'}
       emptyRow={() => ({
         kind,
         question: '',
@@ -269,30 +285,61 @@ export function PollsSection({ eventId, kind }: { eventId: string; kind: 'poll' 
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{p.question}</p>
           <p className="font-mono text-xs text-control-dim">
-            {p.options.map((o) => o.label).join(' / ')} · {p.status}
+            {p.options.map((o) => o.label).join(isVersus ? ' vs ' : ' / ')} · {p.status}
             {!p.show_results && ' · résultats cachés'}
           </p>
         </div>
       )}
       renderForm={(d, set) => {
-        const text =
-          typeof d._options_text === 'string' ? d._options_text : optionsToText(d.options)
+        const options = Array.isArray(d.options)
+          ? (d.options as { id: string; label: string }[])
+          : []
         return (
           <>
             <TextField label="Question" value={str(d.question)} onChange={(v) => set('question', v)} />
-            <TextArea
-              label="Options (une par ligne)"
-              value={text}
-              onChange={(v) => {
-                set('_options_text', v)
-                set('options', textToOptions(v, Array.isArray(d.options) ? (d.options as { id: string; label: string }[]) : undefined))
-              }}
-            />
-            <Toggle
-              label="Afficher les résultats à la clôture"
-              checked={bool(d.show_results)}
-              onChange={(v) => set('show_results', v)}
-            />
+            {isVersus ? (
+              // Deux camps fixes : impose structurellement 2 options (PRD 5.4.8).
+              <>
+                <TextField
+                  label="Camp A"
+                  value={str(options[0]?.label)}
+                  onChange={(v) => set('options', setCampLabel(options, 0, v))}
+                />
+                <TextField
+                  label="Camp B"
+                  value={str(options[1]?.label)}
+                  onChange={(v) => set('options', setCampLabel(options, 1, v))}
+                />
+                <p className="font-mono text-xs text-control-dim">
+                  Résultats masqués pendant le vote, révélés à la clôture.
+                </p>
+              </>
+            ) : (
+              <>
+                <TextArea
+                  label="Options (une par ligne)"
+                  value={
+                    typeof d._options_text === 'string' ? d._options_text : optionsToText(d.options)
+                  }
+                  onChange={(v) => {
+                    set('_options_text', v)
+                    set('options', textToOptions(v, options))
+                  }}
+                />
+                <p className="font-mono text-xs text-control-dim">
+                  Résultats affichés en temps réel sur l'écran pendant le vote.
+                </p>
+              </>
+            )}
+            {/* Toggle clôture réservé au versus : le sondage est toujours en
+                direct (show_results forcé à true via emptyRow). */}
+            {isVersus && (
+              <Toggle
+                label="Afficher les résultats à la clôture"
+                checked={bool(d.show_results)}
+                onChange={(v) => set('show_results', v)}
+              />
+            )}
           </>
         )
       }}
