@@ -12,6 +12,7 @@ import type { LaunchPayload } from '../components/LaunchModal'
 import { AdHocPollModal } from '../components/AdHocPollModal'
 import { ReorderableChips } from '../components/ReorderableChips'
 import { ReorderableList } from '../components/ReorderableList'
+import { computePollOrder } from './reorderStrategies'
 
 interface GestionViewProps {
   control: ControlState
@@ -141,16 +142,13 @@ export function GestionView({
     mutations.reorderList(session, table, ids).catch(() => undefined)
   }
 
-  // Le reorder des polls porte sur la table entière : recoller TOUS les autres
-  // (y compris archivés) pour garder des sort_order cohérents.
+  // Le reorder des polls porte sur la table entière (cf. computePollOrder).
   const reorderPolls = (kind: 'poll' | 'versus') => (ids: string[]) => {
-    const others = polls.filter((p) => p.kind !== kind).map((p) => p.id)
-    const ordered = kind === 'poll' ? [...ids, ...others] : [...others, ...ids]
-    mutations.reorderList(session, 'polls', ordered).catch(() => undefined)
+    mutations.reorderList(session, 'polls', computePollOrder(polls, kind, ids)).catch(() => undefined)
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex h-full flex-col gap-3 overflow-y-auto">
       {/* Définitions — chips dragables, génération LLM */}
       <SectionCard
         title="Définitions"

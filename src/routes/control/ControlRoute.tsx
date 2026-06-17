@@ -117,7 +117,7 @@ function ControlShell({ session }: { session: ControlSession }) {
   const offsetPct = PEEK_PCT - viewIndex * viewWidthPct
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-control-bg font-display text-control-ink">
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-control-bg font-display text-control-ink">
       {/* Pager horizontal — navigation au swipe uniquement (pas d'onglets) */}
       <motion.div
         className="flex min-h-0 flex-1 pt-3"
@@ -148,7 +148,7 @@ function ControlShell({ session }: { session: ControlSession }) {
           <div
             key={i}
             style={{ width: `${viewWidthPct}%` }}
-            className={`shrink-0 overflow-y-auto px-3 pb-3 transition-opacity ${
+            className={`flex shrink-0 flex-col overflow-hidden px-3 pb-3 transition-opacity ${
               i === viewIndex ? '' : 'opacity-60'
             }`}
             onClick={() => {
@@ -156,7 +156,15 @@ function ControlShell({ session }: { session: ControlSession }) {
               if (i !== viewIndex) setViewIndex(i)
             }}
           >
-            <div className={i === viewIndex ? '' : 'pointer-events-none'}>{view}</div>
+            {/* flex-1 + min-h-0 : chaîne de hauteur intacte → les vues qui
+                veulent remplir (Slides, Notes) le font ; Gestion scrolle. */}
+            <div
+              className={`flex min-h-0 flex-1 flex-col ${
+                i === viewIndex ? '' : 'pointer-events-none'
+              }`}
+            >
+              {view}
+            </div>
           </div>
         ))}
       </motion.div>

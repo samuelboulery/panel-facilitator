@@ -15,6 +15,7 @@ import type { ControlState } from '../hooks/useControlState'
 type DeckSlide =
   | { kind: 'attente'; key: string; label: string; hint: string }
   | { kind: 'intro'; key: string; label: string; hint: string; introIndex: number; intro: IntroSlide }
+  | { kind: 'dynamique'; key: string; label: string; hint: string }
   | { kind: 'content'; key: string; label: string; hint: string; content: Content }
   | { kind: 'outro'; key: string; label: string; hint: string }
 
@@ -32,6 +33,9 @@ function buildDeck(data: EventData): DeckSlide[] {
         intro: slide,
       }),
     ),
+    // Slide dynamique principale — toujours présente (cœur de la table ronde,
+    // PRD 5.4). Sans embed sélectionné : scène au repos (titre de l'événement).
+    { kind: 'dynamique', key: 'dynamique', label: data.event.title, hint: 'Dynamique' },
     ...data.contents.map(
       (content): DeckSlide => ({
         kind: 'content',
@@ -62,9 +66,9 @@ function currentDeckIndex(deck: DeckSlide[], control: ControlState): number {
         (s) => s.kind === 'content' && s.content.id === screen.mainContentId,
       )
       if (match !== -1) return match
-      // Aucun contenu sélectionné : se placer sur le premier contenu (ou l'outro - 1).
-      const firstContent = deck.findIndex((s) => s.kind === 'content')
-      return firstContent !== -1 ? firstContent : deck.length - 1
+      // Aucun embed sélectionné : se placer sur la slide dynamique principale.
+      const main = deck.findIndex((s) => s.kind === 'dynamique')
+      return main !== -1 ? main : deck.length - 1
     }
     case 'outro':
       return deck.length - 1
@@ -94,6 +98,11 @@ export function SlidesView({
         // Mode + index dans un seul RPC — pas de course serveur.
         control.goToIntroSlide(slide.introIndex)
         break
+      case 'dynamique':
+        // Mode dynamique sans embed : scène au repos (titre événement).
+        if (control.screen.mode !== 'dynamique') control.setMode('dynamique')
+        control.setMainContent(null)
+        break
       case 'content':
         if (control.screen.mode !== 'dynamique') control.setMode('dynamique')
         control.setMainContent(slide.content.id)
@@ -117,7 +126,7 @@ export function SlidesView({
         )}
 
         <motion.div
-          className="z-10 w-[62%]"
+          className="z-10 w-[74%]"
           drag="x"
           dragSnapToOrigin
           dragElastic={0.2}
@@ -202,8 +211,8 @@ function PeekCard({
     <button
       type="button"
       onClick={onTap}
-      className={`absolute top-1/2 z-0 h-[72%] w-[18%] -translate-y-1/2 overflow-hidden rounded-2xl bg-control-card opacity-70 shadow-sm transition active:scale-95 ${
-        side === 'left' ? '-left-[6%]' : '-right-[6%]'
+      className={`absolute top-1/2 z-0 aspect-video w-[20%] -translate-y-1/2 overflow-hidden rounded-2xl bg-control-card opacity-70 shadow-sm transition active:scale-95 ${
+        side === 'left' ? '-left-[8%]' : '-right-[8%]'
       }`}
       aria-label={slide.label}
     >

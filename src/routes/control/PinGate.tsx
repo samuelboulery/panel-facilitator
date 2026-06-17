@@ -53,7 +53,7 @@ export function PinGate({ onSubmit }: PinGateProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center gap-8 bg-slate-100">
+    <div className="flex h-dvh flex-col items-center justify-center gap-8 bg-slate-100">
       <h1 className="font-mono text-sm uppercase tracking-widest text-slate-500">
         Code de session
       </h1>
