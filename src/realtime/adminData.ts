@@ -63,12 +63,15 @@ export type AdminTable =
   | 'questions'
   | 'polls'
 
-export async function listRows<T>(table: AdminTable, eventId: string): Promise<T[]> {
-  const { data, error } = await supabase
-    .from(table)
-    .select('*')
-    .eq('event_id', eventId)
-    .order('sort_order', { ascending: true })
+export async function listRows<T>(
+  table: AdminTable,
+  eventId: string,
+  match?: Record<string, unknown>,
+): Promise<T[]> {
+  let query = supabase.from(table).select('*').eq('event_id', eventId)
+  // Filtre additionnel (ex. kind='poll' vs 'versus' sur la table partagée polls).
+  if (match) query = query.match(match)
+  const { data, error } = await query.order('sort_order', { ascending: true })
   if (error || !data) return []
   return data as T[]
 }

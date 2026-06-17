@@ -24,6 +24,8 @@ interface ListSectionProps<T extends BaseRow> {
   /** Formulaire d'édition : draft + setter. */
   renderForm: (draft: Record<string, unknown>, set: (k: string, v: unknown) => void) => React.ReactNode
   addLabel: string
+  /** Filtre de liste additionnel (ex. { kind } sur la table partagée polls). */
+  filter?: Record<string, unknown>
 }
 
 export function ListSection<T extends BaseRow>({
@@ -33,15 +35,19 @@ export function ListSection<T extends BaseRow>({
   renderSummary,
   renderForm,
   addLabel,
+  filter,
 }: ListSectionProps<T>) {
   const [rows, setRows] = useState<T[]>([])
   const [editing, setEditing] = useState<string | 'new' | null>(null)
   const [draft, setDraft] = useState<Record<string, unknown>>({})
   const [error, setError] = useState<string | null>(null)
 
+  const filterKey = JSON.stringify(filter ?? null)
   const reload = useCallback(async () => {
-    setRows(await listRows<T>(table, eventId))
-  }, [table, eventId])
+    setRows(await listRows<T>(table, eventId, filter))
+    // filterKey capture le contenu de filter pour le hook (objet recréé à chaque render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table, eventId, filterKey])
 
   useEffect(() => {
     void reload()
