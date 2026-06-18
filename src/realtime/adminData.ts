@@ -53,6 +53,60 @@ export async function setEventPin(eventId: string, pin: string): Promise<void> {
   if (error) throw new Error(`PIN refusé : ${error.message}`)
 }
 
+// ── Bibliothèque de speakers réutilisables (table globale `people`) ──
+// Peuplée automatiquement par trigger DB dès qu'un speaker est enregistré.
+// Import = copie de la fiche dans une ligne speakers de l'événement courant
+// (snapshot éditable, aucun lien conservé).
+
+export interface Person {
+  id: string
+  first_name: string
+  last_name: string
+  title: string | null
+  company: string | null
+  bio: string | null
+  photo_url: string | null
+  gender: 'f' | 'm' | null
+}
+
+export async function listPeople(): Promise<Person[]> {
+  const { data, error } = await supabase
+    .from('people')
+    .select('id, first_name, last_name, title, company, bio, photo_url, gender')
+    .order('last_name', { ascending: true })
+  if (error || !data) return []
+  return data as Person[]
+}
+
+/** Retire une fiche de la bibliothèque. Réapparaît si un speaker du même nom est ré-enregistré. */
+export async function deletePerson(id: string): Promise<void> {
+  const { error } = await supabase.from('people').delete().eq('id', id)
+  if (error) throw new Error(`Suppression refusée : ${error.message}`)
+}
+
+/** Copie une fiche bibliothèque dans les speakers de l'événement (rôle panel par défaut). */
+export async function importPersonToEvent(person: Person, eventId: string): Promise<void> {
+  const { data } = await supabase
+    .from('speakers')
+    .select('sort_order')
+    .eq('event_id', eventId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+  const nextOrder = (data?.[0]?.sort_order ?? -1) + 1
+  await insertRow('speakers', {
+    event_id: eventId,
+    first_name: person.first_name,
+    last_name: person.last_name,
+    title: person.title,
+    company: person.company,
+    bio: person.bio,
+    photo_url: person.photo_url,
+    gender: person.gender,
+    is_host: false,
+    sort_order: nextOrder,
+  })
+}
+
 // ── CRUD générique des listes rattachées à l'événement ──
 
 export type AdminTable =
@@ -96,6 +150,32 @@ export async function updateRow(
 export async function deleteRow(table: AdminTable, id: string): Promise<void> {
   const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) throw new Error(`Suppression refusée : ${error.message}`)
+}
+
+// ── Génération de définition par IA (Edge Function define-term) ──
+// Réutilise la fonction de l'IR ; côté backoffice l'auth se fait par le JWT
+// organisateur (joint automatiquement par le client connecté), pas par PIN.
+// La fonction insère directement la définition générée dans l'événement.
+
+export async function generateDefinition(slug: string, term: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('define-term', {
+    body: { slug, term },
+  })
+  if (error) {
+    // supabase-js masque le corps d'un non-2xx derrière error.context (Response) :
+    // on l'extrait pour remonter le vrai message (PIN/auth, rate-limit, LLM…).
+    let detail = error.message
+    const ctx = (error as { context?: Response }).context
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const body = (await ctx.json()) as { error?: string }
+        if (body?.error) detail = body.error
+      } catch {
+        /* corps illisible : on garde error.message */
+      }
+    }
+    throw new Error(`Génération de définition échouée : ${detail}`)
+  }
 }
 
 // ── Réinitialisation de table ronde (RPC admin_reset_round) ──
@@ -151,7 +231,7 @@ async function toWebp(file: File, maxDim: number): Promise<Blob> {
  */
 export async function uploadImage(
   file: File,
-  folder: 'speakers' | 'sponsors',
+  folder: 'speakers' | 'sponsors' | 'definitions',
   maxDim = 800,
 ): Promise<string> {
   if (!file.type.startsWith('image/')) {

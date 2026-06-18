@@ -21,12 +21,12 @@ const event: EventPublic = {
 
 const host: Speaker = {
   id: 'h1', firstName: 'Camille', lastName: 'D', title: null, company: null,
-  bio: null, photoUrl: 'https://x/p.webp', isHost: true, sortOrder: 0, hidden: false,
+  bio: null, photoUrl: 'https://x/p.webp', isHost: true, gender: null, sortOrder: 0, hidden: false,
 }
 const speaker: Speaker = { ...host, id: 's1', isHost: false }
 const sponsor: Sponsor = { id: 'sp1', name: 'X', logoUrl: 'https://x/l.webp', sortOrder: 0 }
 const content: Content = { id: 'c1', kind: 'embed_gslides', url: 'https://docs.google.com/presentation/d/abc/edit', label: 'Deck', sortOrder: 0 }
-const definition: Definition = { id: 'd1', term: 'LLM', definition: 'x', sortOrder: 0, used: false }
+const definition: Definition = { id: 'd1', term: 'LLM', definition: 'x', imageUrl: null, sortOrder: 0, used: false }
 const poll: Poll = { id: 'p1', kind: 'poll', question: 'Q ?', options: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], status: 'draft', showResults: true }
 
 const full = {

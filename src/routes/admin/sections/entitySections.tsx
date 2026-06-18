@@ -3,8 +3,26 @@
 import { useState } from 'react'
 import { ListSection } from './ListSection'
 import { ResetControl } from './ResetControl'
-import type { ResetScope } from '../../../realtime/adminData'
-import { ImageField, TextArea, TextField, Toggle } from '../components/fields'
+import {
+  deletePerson,
+  generateDefinition,
+  importPersonToEvent,
+  listPeople,
+  listRows,
+  type Person,
+  type ResetScope,
+} from '../../../realtime/adminData'
+import { roleLabel } from '../../../shared/roleLabel'
+import { ImageField, SelectField, TextArea, TextField, Toggle } from '../components/fields'
+
+const GENDER_OPTIONS = [
+  { value: '', label: 'Non précisé' },
+  { value: 'f', label: 'Animatrice / Intervenante' },
+  { value: 'm', label: 'Animateur / Intervenant' },
+]
+
+const personFullName = (p: { first_name: string; last_name: string }) =>
+  `${p.first_name} ${p.last_name}`.trim().toLowerCase()
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 const bool = (v: unknown) => v === true
@@ -38,18 +56,122 @@ interface SpeakerRow {
   bio: string | null
   photo_url: string | null
   is_host: boolean
+  gender: 'f' | 'm' | null
   hidden: boolean
 }
 
-export function SpeakersSection({ eventId }: { eventId: string }) {
+/** Barre d'import depuis la bibliothèque : liste les personnes déjà intervenues
+ *  dans d'autres événements et les recopie en un clic. Vide tant qu'un seul event. */
+function ImportBar({ eventId, onImported }: { eventId: string; onImported: () => void }) {
+  const [people, setPeople] = useState<Person[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const open = async () => {
+    setError(null)
+    try {
+      const [all, current] = await Promise.all([
+        listPeople(),
+        listRows<SpeakerRow>('speakers', eventId),
+      ])
+      const existing = new Set(current.map(personFullName))
+      setPeople(all.filter((p) => !existing.has(personFullName(p))))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  const pick = async (p: Person) => {
+    try {
+      await importPersonToEvent(p, eventId)
+      setPeople(null)
+      onImported()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
+  const remove = async (p: Person) => {
+    if (!window.confirm(`Retirer ${p.first_name} ${p.last_name} de la bibliothèque ?`)) return
+    try {
+      await deletePerson(p.id)
+      setPeople((list) => (list ? list.filter((x) => x.id !== p.id) : list))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    }
+  }
+
   return (
+    <div className="mb-3">
+      {people === null ? (
+        <button
+          type="button"
+          onClick={() => void open()}
+          className="rounded-lg bg-white px-3 py-2 font-mono text-xs text-control-ink shadow-sm active:scale-95"
+        >
+          Importer depuis la bibliothèque
+        </button>
+      ) : (
+        <div className="rounded-xl bg-white p-3 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-mono text-xs text-control-dim">Bibliothèque</p>
+            <button type="button" onClick={() => setPeople(null)} className="font-mono text-xs text-control-dim active:scale-95">
+              Fermer
+            </button>
+          </div>
+          {people.length === 0 ? (
+            <p className="py-2 text-sm text-control-dim">Aucune personne disponible à importer.</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {people.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 rounded-lg hover:bg-control-panel">
+                  <button
+                    type="button"
+                    onClick={() => void pick(p)}
+                    className="flex min-w-0 flex-1 items-center gap-3 px-2 py-1.5 text-left active:scale-[0.99]"
+                  >
+                    {p.photo_url ? (
+                      <img src={p.photo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-control-bg" />
+                    )}
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{p.first_name} {p.last_name}</span>
+                      <span className="block truncate font-mono text-xs text-control-dim">
+                        {[p.title, p.company].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void remove(p)}
+                    className="px-2 py-1 font-mono text-xs text-red-500 active:scale-95"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
+  )
+}
+
+export function SpeakersSection({ eventId }: { eventId: string }) {
+  const [refreshKey, setRefreshKey] = useState(0)
+  return (
+    <>
+    <ImportBar eventId={eventId} onImported={() => setRefreshKey((k) => k + 1)} />
     <ListSection<SpeakerRow>
+      key={refreshKey}
       table="speakers"
       eventId={eventId}
       addLabel="Ajouter un speaker"
       emptyRow={() => ({
         first_name: '', last_name: '', title: '', company: '', bio: '',
-        photo_url: null, is_host: false, hidden: false,
+        photo_url: null, is_host: false, gender: null, hidden: false,
       })}
       renderSummary={(s) => (
         <div className="flex items-center gap-3">
@@ -61,7 +183,7 @@ export function SpeakersSection({ eventId }: { eventId: string }) {
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">
               {s.first_name} {s.last_name}
-              {s.is_host && <span className="ml-2 rounded bg-control-accent px-1.5 py-0.5 font-mono text-[10px] text-white">Animateur·rice</span>}
+              {s.is_host && <span className="ml-2 rounded bg-control-accent px-1.5 py-0.5 font-mono text-[10px] text-white">{roleLabel(true, s.gender)}</span>}
               {s.hidden && <span className="ml-2 font-mono text-[10px] text-control-dim uppercase">masqué</span>}
             </p>
             <p className="truncate font-mono text-xs text-control-dim">
@@ -79,6 +201,12 @@ export function SpeakersSection({ eventId }: { eventId: string }) {
             <TextField label="Société" value={str(d.company)} onChange={(v) => set('company', v)} />
           </div>
           <TextArea label="Bio courte" value={str(d.bio)} onChange={(v) => set('bio', v)} />
+          <SelectField
+            label="Genre (accord du rôle)"
+            value={str(d.gender)}
+            onChange={(v) => set('gender', v === '' ? null : v)}
+            options={GENDER_OPTIONS}
+          />
           <ImageField
             label="Photo"
             url={typeof d.photo_url === 'string' ? d.photo_url : null}
@@ -90,6 +218,7 @@ export function SpeakersSection({ eventId }: { eventId: string }) {
         </>
       )}
     />
+    </>
   )
 }
 
@@ -189,9 +318,59 @@ interface DefinitionRow {
   sort_order: number
   term: string
   definition: string
+  image_url: string | null
 }
 
-export function DefinitionsSection({ eventId }: { eventId: string }) {
+/** Génère une définition par IA depuis un terme (Edge Function, auth JWT organisateur).
+ *  La définition est insérée puis la liste se rafraîchit ; éditable ensuite via le CRUD. */
+function GenerateDefinitionBar({ slug, onGenerated }: { slug: string; onGenerated: () => void }) {
+  const [term, setTerm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const generate = async () => {
+    const t = term.trim()
+    if (!t) return
+    setBusy(true)
+    setError(null)
+    try {
+      await generateDefinition(slug, t)
+      setTerm('')
+      onGenerated()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mb-3 rounded-xl bg-white p-3 shadow-sm">
+      <p className="mb-2 font-mono text-xs text-control-dim">Générer par IA</p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={term}
+          onChange={(e) => setTerm(e.target.value.slice(0, 60))}
+          onKeyDown={(e) => e.key === 'Enter' && void generate()}
+          placeholder="Terme à définir (ex. RAG)"
+          className="min-w-0 flex-1 rounded-lg border border-control-bg bg-white px-3 py-2 text-sm outline-control-accent"
+        />
+        <button
+          type="button"
+          onClick={() => void generate()}
+          disabled={busy || !term.trim()}
+          className="rounded-lg bg-control-ink px-4 py-2 font-mono text-sm text-white active:scale-95 disabled:opacity-50"
+        >
+          {busy ? 'Génération…' : 'Générer'}
+        </button>
+      </div>
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
+  )
+}
+
+export function DefinitionsSection({ eventId, slug }: { eventId: string; slug: string }) {
   const [refreshKey, setRefreshKey] = useState(0)
   return (
     <>
@@ -201,22 +380,35 @@ export function DefinitionsSection({ eventId }: { eventId: string }) {
       label="Réinitialiser les définitions"
       onDone={() => setRefreshKey((k) => k + 1)}
     />
+    <GenerateDefinitionBar slug={slug} onGenerated={() => setRefreshKey((k) => k + 1)} />
     <ListSection<DefinitionRow>
       key={refreshKey}
       table="definitions"
       eventId={eventId}
       addLabel="Ajouter une définition"
-      emptyRow={() => ({ term: '', definition: '' })}
+      emptyRow={() => ({ term: '', definition: '', image_url: null })}
       renderSummary={(d) => (
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">{d.term}</p>
-          <p className="truncate text-xs text-control-dim">{d.definition}</p>
+        <div className="flex items-center gap-3">
+          {d.image_url && (
+            <img src={d.image_url} alt="" className="h-9 w-9 rounded object-cover" />
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">{d.term}</p>
+            <p className="truncate text-xs text-control-dim">{d.definition}</p>
+          </div>
         </div>
       )}
       renderForm={(d, set) => (
         <>
           <TextField label="Terme" value={str(d.term)} onChange={(v) => set('term', v)} />
           <TextArea label="Définition" value={str(d.definition)} onChange={(v) => set('definition', v)} />
+          <ImageField
+            label="Image (optionnelle)"
+            url={typeof d.image_url === 'string' ? d.image_url : null}
+            folder="definitions"
+            maxDim={800}
+            onUploaded={(url) => set('image_url', url)}
+          />
         </>
       )}
     />

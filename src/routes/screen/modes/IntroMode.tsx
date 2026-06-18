@@ -6,6 +6,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import type { EventData } from '../../../realtime/eventData'
 import { buildIntroSlides, clampIntroIndex, type IntroSlide } from '../../../shared/introSlides'
+import { roleLabel } from '../../../shared/roleLabel'
 import { assoContentSchema } from '../../../shared/schemas'
 import type { ScreenState, Speaker } from '../../../shared/types'
 import { SpeakerAvatar } from '../components/SpeakerAvatar'
@@ -121,9 +122,9 @@ function SlideContent({ slide, data }: { slide: IntroSlide; data: EventData }) {
     case 'title':
       return <TitleSlide data={data} />
     case 'host':
-      return slide.speaker ? <PersonSlide speaker={slide.speaker} role="Animateur·rice" /> : null
+      return slide.speaker ? <PersonSlide speaker={slide.speaker} role={roleLabel(true, slide.speaker.gender)} /> : null
     case 'speaker':
-      return slide.speaker ? <PersonSlide speaker={slide.speaker} role="Intervenant·e" /> : null
+      return slide.speaker ? <PersonSlide speaker={slide.speaker} role={roleLabel(false, slide.speaker.gender)} /> : null
     case 'grid':
       return <GridSlide data={data} />
   }

@@ -20,14 +20,14 @@ values (
 );
 
 with e as (select id from events where slug = 'demo')
-insert into speakers (event_id, first_name, last_name, title, company, bio, is_host, sort_order)
+insert into speakers (event_id, first_name, last_name, title, company, bio, is_host, gender, sort_order)
 select e.id, s.* from e, (values
-  ('Samuel', 'Boulery', 'System Designer & Référent IA', 'CBTW', 'Designer spécialisé en Design System en mission dans l''équipe Design System EDF et Référent IA pour les consultants Design CBTW', true, 0),
-  ('Victor', 'Storti', 'Head of UX Photoweb & Co-Founder Detach Instance', ' ex-Veepee / Bellecour / Photoweb / Detach Instance', 'Head of UX chez Photoweb, co-fondateur de Detach Instance et ex Principal UX/UI chez Veepee. J''explore les liens entre design, IA, produit et nouvelles méthodologies pour aider les équipes à concevoir des produits plus clairs, plus cohérents et plus impactants.', false, 1),
-  ('Camille', 'Ala', 'Senior Product Designer & AI Tech Lead', 'Devoteam', '', false, 2),
-  ('Hugo', 'Douchet', 'Conseiller Stratégique Design System', 'Eat My Mind', '', false, 3),
-  ('Vincent', 'Perrier-Perrery', 'Responsable UX', 'Framatome', '', false, 4)
-) as s(first_name, last_name, title, company, bio, is_host, sort_order);
+  ('Samuel', 'Boulery', 'System Designer & Référent IA', 'CBTW', 'Designer spécialisé en Design System en mission dans l''équipe Design System EDF et Référent IA pour les consultants Design CBTW', true, 'm'::gender_kind, 0),
+  ('Victor', 'Storti', 'Head of UX Photoweb & Co-Founder Detach Instance', ' ex-Veepee / Bellecour / Photoweb / Detach Instance', 'Head of UX chez Photoweb, co-fondateur de Detach Instance et ex Principal UX/UI chez Veepee. J''explore les liens entre design, IA, produit et nouvelles méthodologies pour aider les équipes à concevoir des produits plus clairs, plus cohérents et plus impactants.', false, 'm'::gender_kind, 1),
+  ('Camille', 'Ala', 'Senior Product Designer & AI Tech Lead', 'Devoteam', '', false, null::gender_kind, 2),
+  ('Hugo', 'Douchet', 'Conseiller Stratégique Design System', 'Eat My Mind', '', false, 'm'::gender_kind, 3),
+  ('Vincent', 'Perrier-Perrery', 'Responsable UX', 'Framatome', '', false, 'm'::gender_kind, 4)
+) as s(first_name, last_name, title, company, bio, is_host, gender, sort_order);
 
 with e as (select id from events where slug = 'demo')
 insert into sponsors (event_id, name, logo_url, sort_order)

@@ -28,6 +28,7 @@ const speaker = (id: string, opts: Partial<Speaker> = {}): Speaker => ({
   bio: null,
   photoUrl: null,
   isHost: false,
+  gender: null,
   sortOrder: 0,
   hidden: false,
   ...opts,

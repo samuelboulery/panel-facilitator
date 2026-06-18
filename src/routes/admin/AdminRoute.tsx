@@ -195,7 +195,7 @@ export default function AdminRoute() {
           {section === 'speakers' && <SpeakersSection eventId={event.id} />}
           {section === 'sponsors' && <SponsorsSection eventId={event.id} />}
           {section === 'contents' && <ContentsSection eventId={event.id} />}
-          {section === 'definitions' && <DefinitionsSection eventId={event.id} />}
+          {section === 'definitions' && <DefinitionsSection eventId={event.id} slug={event.slug} />}
           {section === 'questions' && <QuestionsSection eventId={event.id} />}
           {section === 'polls' && <PollsSection eventId={event.id} kind="poll" />}
           {section === 'votes' && <PollsSection eventId={event.id} kind="versus" />}

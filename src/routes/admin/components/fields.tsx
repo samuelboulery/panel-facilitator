@@ -58,6 +58,35 @@ export function TextArea({
   )
 }
 
+export function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}) {
+  const id = useId()
+  return (
+    <label htmlFor={id} className="block">
+      <span className="mb-1 block font-mono text-xs tracking-wide text-control-dim">{label}</span>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border border-control-bg bg-white px-3 py-2 text-sm outline-control-accent"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 export function Toggle({
   label,
   checked,
@@ -98,7 +127,7 @@ export function ImageField({
 }: {
   label: string
   url: string | null
-  folder: 'speakers' | 'sponsors'
+  folder: 'speakers' | 'sponsors' | 'definitions'
   maxDim: number
   onUploaded: (url: string) => void
 }) {
