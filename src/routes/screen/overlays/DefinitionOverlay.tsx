@@ -19,12 +19,21 @@ export function DefinitionOverlay({ id }: { id: string }) {
   if (!definition) return null
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-ink-soft/95 p-10 shadow-2xl backdrop-blur-md">
-      <p className="micro-label mb-4 text-accent">Définition</p>
-      <p className="display-title mb-4 text-5xl">{definition.term}</p>
-      <p className="max-w-[1100px] text-2xl leading-relaxed text-paper-dim">
-        {definition.definition}
-      </p>
+    <div className="flex items-center gap-10 rounded-3xl border border-white/10 bg-ink-soft/95 p-10 shadow-2xl backdrop-blur-md">
+      <div className="min-w-0 flex-1">
+        <p className="micro-label mb-4 text-accent">Définition</p>
+        <p className="display-title mb-4 text-5xl">{definition.term}</p>
+        <p className="max-w-[1100px] text-2xl leading-relaxed text-paper-dim">
+          {definition.definition}
+        </p>
+      </div>
+      {definition.imageUrl && (
+        <img
+          src={definition.imageUrl}
+          alt=""
+          className="h-56 w-56 shrink-0 rounded-2xl object-cover"
+        />
+      )}
     </div>
   )
 }

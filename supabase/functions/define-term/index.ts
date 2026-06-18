@@ -1,4 +1,6 @@
-// Architecture : génération de définition courte par LLM (DeepSeek deepseek-v4-flash).
+// Architecture : génération de définition courte par LLM (DeepSeek deepseek-chat).
+// Modèle non-raisonnant volontaire : un modèle « reasoning » consomme tout le
+// budget de tokens en reasoning_content et renvoie un content vide → 502.
 // Edge Function = seule détentrice de DEEPSEEK_API_KEY — jamais côté client.
 // Auth : PIN de session vérifié via control_auth avant tout appel modèle.
 // API DeepSeek = format OpenAI-compatible → simple fetch, pas de SDK.
@@ -33,8 +35,8 @@ Deno.serve(async (req) => {
   }
 
   const { slug, pin, term } = payload;
-  if (!slug || !pin || !term?.trim() || term.length > 60) {
-    return json({ error: "Paramètres invalides (slug, pin, term ≤ 60 car.)" }, 400);
+  if (!slug || !term?.trim() || term.length > 60) {
+    return json({ error: "Paramètres invalides (slug, term ≤ 60 car.)" }, 400);
   }
 
   const supabase = createClient(
@@ -42,13 +44,37 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Auth régie : même mécanisme que toutes les mutations live.
-  const { data: eventId, error: authError } = await supabase.rpc("control_auth", {
-    p_slug: slug,
-    p_pin: pin,
-  });
-  if (authError || !eventId) {
-    return json({ error: "PIN invalide" }, 401);
+  // Deux chemins d'auth pour la même génération :
+  //  - IR (anon) : PIN de session vérifié en base, comme toutes les mutations live.
+  //  - Backoffice : JWT organisateur (verify_jwt=false au gateway → vérifié ici).
+  let eventId: string | null = null;
+  if (pin) {
+    const { data, error: authError } = await supabase.rpc("control_auth", {
+      p_slug: slug,
+      p_pin: pin,
+    });
+    if (!authError) eventId = (data as string | null) ?? null;
+  } else {
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      const authed = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await authed.auth.getUser();
+      if (user) {
+        const { data: ev } = await supabase
+          .from("events")
+          .select("id")
+          .eq("slug", slug)
+          .maybeSingle();
+        eventId = (ev as { id: string } | null)?.id ?? null;
+      }
+    }
+  }
+  if (!eventId) {
+    return json({ error: "Authentification refusée" }, 401);
   }
 
   // Rate-limit : plafonne les générations LLM par event (un PIN valide ne doit
@@ -76,7 +102,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${Deno.env.get("DEEPSEEK_API_KEY")!}`,
       },
       body: JSON.stringify({
-        model: "deepseek-v4-flash",
+        model: "deepseek-chat",
         max_tokens: 300,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },

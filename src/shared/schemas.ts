@@ -74,6 +74,7 @@ export const speakerRowSchema = z
     bio: z.string().nullable(),
     photo_url: z.string().nullable(),
     is_host: z.boolean(),
+    gender: z.enum(['f', 'm']).nullable(),
     sort_order: z.number(),
     hidden: z.boolean(),
   })
@@ -86,6 +87,7 @@ export const speakerRowSchema = z
     bio: r.bio,
     photoUrl: r.photo_url,
     isHost: r.is_host,
+    gender: r.gender,
     sortOrder: r.sort_order,
     hidden: r.hidden,
   }))
@@ -125,6 +127,7 @@ export const definitionRowSchema = z
     id: z.string().uuid(),
     term: z.string(),
     definition: z.string(),
+    image_url: z.string().nullable().default(null),
     sort_order: z.number(),
     used: z.boolean().default(false),
   })
@@ -132,6 +135,7 @@ export const definitionRowSchema = z
     id: r.id,
     term: r.term,
     definition: r.definition,
+    imageUrl: r.image_url,
     sortOrder: r.sort_order,
     used: r.used,
   }))

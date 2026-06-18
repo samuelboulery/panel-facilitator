@@ -2,6 +2,7 @@
 // L'EP rend la slide à screen_state.intro_slide_index ; l'IR navigue avec
 // les labels. Liste recalculée à chaque changement (speaker masqué en live
 // ⇒ la séquence se raccourcit, l'index est borné par clampIntroIndex).
+import { roleLabel } from './roleLabel'
 import type { EventPublic, Speaker } from './types'
 
 export type IntroSlideKind = 'asso' | 'title' | 'host' | 'speaker' | 'grid'
@@ -25,7 +26,7 @@ export function buildIntroSlides(event: EventPublic, speakers: Speaker[]): Intro
 
   const host = speakers.find((s) => s.isHost && !s.hidden)
   if (host) {
-    slides.push({ kind: 'host', label: `Animateur·rice — ${host.firstName}`, speaker: host })
+    slides.push({ kind: 'host', label: `${roleLabel(true, host.gender)} — ${host.firstName}`, speaker: host })
   }
 
   const panel = speakers.filter((s) => !s.isHost && !s.hidden)

@@ -54,6 +54,7 @@ export interface Speaker {
   bio: string | null
   photoUrl: string | null
   isHost: boolean
+  gender: 'f' | 'm' | null
   sortOrder: number
   hidden: boolean
 }
@@ -77,6 +78,7 @@ export interface Definition {
   id: string
   term: string
   definition: string
+  imageUrl: string | null
   sortOrder: number
   /** Déjà affichée pendant l'événement — ne se montre qu'une fois. */
   used: boolean
