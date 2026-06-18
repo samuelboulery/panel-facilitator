@@ -5,6 +5,7 @@
 import type { EventData } from '../../../realtime/eventData'
 import type { ScreenState } from '../../../shared/types'
 import { toEmbedUrl } from '../../../shared/embed'
+import { GSlidesDeck } from './GSlidesDeck'
 import { SpeakersBanner } from '../components/SpeakersBanner'
 import { QrBadge } from '../components/QrBadge'
 import { OverlayHost } from '../overlays/OverlayHost'
@@ -37,16 +38,28 @@ function MainContent({ data, state }: { data: EventData; state: ScreenState }) {
 
   switch (content.kind) {
     case 'embed_gslides':
+      // Deck navigable : la slide interne suit state.contentStep (cross-fade).
+      // key=content.id : changer de deck remonte le composant (sinon l'ancien
+      // iframe resterait, step 0 == front.step 0 ne déclenchant aucun reload).
+      return (
+        <GSlidesDeck
+          key={content.id}
+          url={content.url}
+          step={state.contentStep}
+          label={content.label}
+        />
+      )
     case 'embed_figma':
+    case 'embed_site':
       return (
         <iframe
           src={url}
           title={content.label}
           className="h-full w-full border-0"
           allow="autoplay; fullscreen"
-          // allow-scripts requis : Slides/Figma sont des apps JS. Cross-origin,
-          // allow-same-origin ne donne accès qu'à LEUR origine. Domaines
-          // whitelistés en amont par toEmbedUrl (src/shared/embed.ts).
+          // allow-scripts requis : Figma/site sont des apps JS. Cross-origin,
+          // allow-same-origin ne donne accès qu'à LEUR origine. Figma whitelisté
+          // par toEmbedUrl ; site = URL https de confiance (saisie admin).
           sandbox="allow-scripts allow-same-origin allow-presentation"
         />
       )

@@ -17,6 +17,7 @@ export const screenStateRowSchema = z
     mode: modeSchema,
     intro_slide_index: z.number().int().min(0),
     main_content_id: z.string().uuid().nullable(),
+    content_step: z.number().int().min(0).default(0),
     overlay: overlaySchema.nullable(),
     speakers_banner_visible: z.boolean(),
     qr_visible: z.boolean(),
@@ -27,6 +28,7 @@ export const screenStateRowSchema = z
       mode: row.mode,
       introSlideIndex: row.intro_slide_index,
       mainContentId: row.main_content_id,
+      contentStep: row.content_step,
       overlay: row.overlay,
       speakersBannerVisible: row.speakers_banner_visible,
       qrVisible: row.qr_visible,
@@ -109,7 +111,7 @@ export const sponsorRowSchema = z
 export const contentRowSchema = z
   .object({
     id: z.string().uuid(),
-    kind: z.enum(['embed_gslides', 'embed_figma', 'image', 'video']),
+    kind: z.enum(['embed_gslides', 'embed_figma', 'embed_site', 'image', 'video']),
     url: z.string(),
     label: z.string(),
     sort_order: z.number(),

@@ -3,7 +3,7 @@
 // Séquence unifiée : Attente → slides intro → contenus dynamiques → Outro.
 // Naviguer (flèches, tap carte adjacente, swipe) pilote directement l'EP via
 // useControlState — toujours validé par la machine à états.
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { EventData } from '../../../realtime/eventData'
 import type { ControlSession } from '../../../realtime/mutations'
@@ -50,12 +50,14 @@ function buildDeck(data: EventData): DeckSlide[] {
   ]
 }
 
-/** État EP synthétique pour le rendu d'aperçu d'une slide du deck. */
-function slideToState(slide: DeckSlide): ScreenState {
+/** État EP synthétique pour le rendu d'aperçu d'une slide du deck.
+ *  `contentStep` positionne l'aperçu d'un deck Google Slides (0 pour les peeks). */
+function slideToState(slide: DeckSlide, contentStep = 0): ScreenState {
   const base: ScreenState = {
     mode: 'attente',
     introSlideIndex: 0,
     mainContentId: null,
+    contentStep: 0,
     overlay: null,
     speakersBannerVisible: true,
     qrVisible: false,
@@ -69,7 +71,7 @@ function slideToState(slide: DeckSlide): ScreenState {
     case 'dynamique':
       return { ...base, mode: 'dynamique' }
     case 'content':
-      return { ...base, mode: 'dynamique', mainContentId: slide.content.id }
+      return { ...base, mode: 'dynamique', mainContentId: slide.content.id, contentStep }
     case 'outro':
       return { ...base, mode: 'outro' }
   }
@@ -105,10 +107,13 @@ export function SlidesView({
   data,
   control,
   session,
+  active,
 }: {
   data: EventData
   control: ControlState
   session: ControlSession
+  /** Vue affichée dans le pager — n'écoute le clavier que si active. */
+  active: boolean
 }) {
   const deck = useMemo(() => buildDeck(data), [data])
   const index = currentDeckIndex(deck, control)
@@ -143,6 +148,34 @@ export function SlidesView({
   const prev = deck[index - 1]
   const next = deck[index + 1]
 
+  // Navigation clavier / télécommande : ←/→ pilotent le carrousel (donc l'EP).
+  // Le listener lit la nav courante via une ref (jamais de closure périmée sur
+  // goTo/deck/control) ; il ne se ré-enregistre qu'au changement de vue active.
+  const navRef = useRef<{ goPrev: (() => void) | null; goNext: (() => void) | null }>({
+    goPrev: null,
+    goNext: null,
+  })
+  navRef.current = {
+    goPrev: prev ? () => goTo(index - 1) : null,
+    goNext: next ? () => goTo(index + 1) : null,
+  }
+  useEffect(() => {
+    if (!active) return
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (el?.matches('input, textarea, select, [contenteditable]')) return
+      if (e.key === 'ArrowLeft' && navRef.current.goPrev) {
+        e.preventDefault()
+        navRef.current.goPrev()
+      } else if (e.key === 'ArrowRight' && navRef.current.goNext) {
+        e.preventDefault()
+        navRef.current.goNext()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [active])
+
   return (
     <div className="flex h-full flex-col gap-3">
       {/* Carrousel : précédente | courante (grande) | suivante (maquette 15) */}
@@ -169,7 +202,9 @@ export function SlidesView({
               exit={{ opacity: 0, scale: 0.96 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             >
-              {current && <SlidePreview slide={current} data={data} session={session} />}
+              {current && (
+                <SlidePreview slide={current} data={data} session={session} control={control} />
+              )}
             </motion.div>
           </AnimatePresence>
         </motion.div>
@@ -258,18 +293,52 @@ function SlidePreview({
   slide,
   data,
   session,
+  control,
 }: {
   slide: DeckSlide
   data: EventData
   session: ControlSession
+  control: ControlState
 }) {
+  // Deck Google Slides actif : la carte reflète la slide interne courante.
+  const isGslides = slide.kind === 'content' && slide.content.kind === 'embed_gslides'
+  const step = control.screen.contentStep
+
   return (
     <div className="relative w-full overflow-hidden rounded-2xl shadow-md">
-      <StagePreview data={data} state={slideToState(slide)} />
+      <StagePreview data={data} state={slideToState(slide, step)} />
 
       <p className="absolute top-3 left-3 z-30 rounded bg-black/40 px-2 py-1 font-mono text-[11px] tracking-[0.2em] text-white/80 uppercase backdrop-blur-sm">
         {slide.hint}
       </p>
+
+      {/* Navigation interne du deck (PRD 5.4.1) : avancer/reculer dans les slides
+          du contenu encapsulé. Pas de borne haute — total inconnu sans l'API Google.
+          ponytail: ◀ borné à 0, ▶ libre ; ajouter un compteur de slides si besoin. */}
+      {isGslides && (
+        <div className="absolute right-3 bottom-3 z-30 flex items-center gap-2">
+          <button
+            type="button"
+            disabled={step === 0}
+            onClick={() => control.setContentStep(step - 1)}
+            className="rounded bg-black/40 px-3 py-1 font-mono text-sm text-white/80 backdrop-blur-sm active:scale-95 disabled:opacity-30"
+            aria-label="Slide précédente du contenu"
+          >
+            ◀
+          </button>
+          <span className="rounded bg-black/40 px-2 py-1 font-mono text-[11px] text-white/80 backdrop-blur-sm">
+            {step + 1}
+          </span>
+          <button
+            type="button"
+            onClick={() => control.setContentStep(step + 1)}
+            className="rounded bg-black/40 px-3 py-1 font-mono text-sm text-white/80 backdrop-blur-sm active:scale-95"
+            aria-label="Slide suivante du contenu"
+          >
+            ▶
+          </button>
+        </div>
+      )}
 
       {/* Masquage speaker en live (désistement) directement sur la carte */}
       {slide.kind === 'intro' && slide.intro.kind === 'speaker' && slide.intro.speaker && (

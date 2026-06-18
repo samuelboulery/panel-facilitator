@@ -18,6 +18,7 @@ export const initialScreenState: ScreenState = {
   mode: 'attente',
   introSlideIndex: 0,
   mainContentId: null,
+  contentStep: 0,
   overlay: null,
   speakersBannerVisible: true,
   qrVisible: true,
@@ -29,6 +30,7 @@ export type ScreenAction =
   | { type: 'SHOW_OVERLAY'; overlay: Overlay }
   | { type: 'CLOSE_OVERLAY' }
   | { type: 'SET_MAIN_CONTENT'; contentId: string | null }
+  | { type: 'SET_CONTENT_STEP'; step: number }
   | { type: 'SET_INTRO_SLIDE'; index: number }
   | { type: 'TOGGLE_SPEAKERS_BANNER' }
   | { type: 'TOGGLE_QR' }
@@ -97,7 +99,17 @@ export function applyAction(state: ScreenState, action: ScreenAction): ActionRes
       if (state.mode !== 'dynamique') {
         return reject('Le contenu principal ne se change qu’en mode dynamique.')
       }
-      return accept({ ...state, mainContentId: action.contentId })
+      // Changer de contenu repart de sa première slide interne.
+      return accept({ ...state, mainContentId: action.contentId, contentStep: 0 })
+    }
+
+    case 'SET_CONTENT_STEP': {
+      if (state.mode !== 'dynamique') {
+        return reject('La navigation interne n’est disponible qu’en mode dynamique.')
+      }
+      // Pas de borne haute : total de slides du deck inconnu sans l'API Google.
+      const step = Math.max(0, action.step)
+      return accept({ ...state, contentStep: step })
     }
 
     case 'SET_INTRO_SLIDE': {

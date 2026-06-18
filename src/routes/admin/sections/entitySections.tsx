@@ -269,6 +269,7 @@ interface ContentRow {
 const CONTENT_KINDS = [
   { value: 'embed_gslides', label: 'Google Slides' },
   { value: 'embed_figma', label: 'Figma' },
+  { value: 'embed_site', label: 'Site web (URL)' },
   { value: 'image', label: 'Image (URL)' },
   { value: 'video', label: 'Vidéo (URL)' },
 ]

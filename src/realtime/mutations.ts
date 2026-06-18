@@ -27,6 +27,7 @@ type ScreenStatePatch = Partial<{
   mode: Mode
   intro_slide_index: number
   main_content_id: string | null
+  content_step: number
   overlay: Overlay | null
   speakers_banner_visible: boolean
   qr_visible: boolean
@@ -59,8 +60,13 @@ export const setIntroSlide = (s: ControlSession, index: number) =>
 export const setIntroMode = (s: ControlSession, index: number) =>
   patchScreenState(s, { mode: 'intro', intro_slide_index: index })
 
+/** Change le contenu ET réinitialise la slide interne à 0 — un seul patch (pas de course). */
 export const setMainContent = (s: ControlSession, contentId: string | null) =>
-  patchScreenState(s, { main_content_id: contentId })
+  patchScreenState(s, { main_content_id: contentId, content_step: 0 })
+
+/** Slide interne du deck dynamique (Google Slides). Borne basse à 0. */
+export const setContentStep = (s: ControlSession, step: number) =>
+  patchScreenState(s, { content_step: Math.max(0, step) })
 
 export const showOverlay = (s: ControlSession, overlay: Overlay) =>
   patchScreenState(s, { overlay })

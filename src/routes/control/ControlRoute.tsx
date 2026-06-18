@@ -154,7 +154,13 @@ function ControlShell({ session }: { session: ControlSession }) {
         }}
       >
         {[
-          <SlidesView key="slides" data={data} control={control} session={session} />,
+          <SlidesView
+            key="slides"
+            data={data}
+            control={control}
+            session={session}
+            active={viewIndex === 0}
+          />,
           <GestionView
             key="gestion"
             control={control}
