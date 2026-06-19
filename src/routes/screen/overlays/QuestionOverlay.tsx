@@ -27,7 +27,7 @@ export function QuestionOverlay({ id }: { id: string }) {
       : 'Question'
 
   return (
-    <div className="rounded-3xl border border-accent/40 bg-ink-soft/95 p-10 shadow-2xl backdrop-blur-md">
+    <div className="stage-card">
       <p className="micro-label mb-5 text-accent">{attribution}</p>
       <p className="display-title max-w-[1240px] text-5xl leading-tight">
         {question.text}

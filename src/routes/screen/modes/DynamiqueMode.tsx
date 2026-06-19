@@ -18,7 +18,10 @@ function MainContent({ data, state }: { data: EventData; state: ScreenState }) {
     // Scène au repos : titre discret, l'atmosphère fait le travail.
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="display-title max-w-[1100px] text-center text-6xl text-white/12">
+        <p
+          className="display-title max-w-[1100px] text-center text-6xl"
+          style={{ color: 'color-mix(in srgb, var(--color-paper) 12%, transparent)' }}
+        >
           {data.event.title}
         </p>
       </div>
@@ -30,7 +33,12 @@ function MainContent({ data, state }: { data: EventData; state: ScreenState }) {
     // URL invalide : fallback silencieux (l'alerte vit dans l'IR, pas ici).
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="display-title text-6xl text-white/12">{data.event.title}</p>
+        <p
+          className="display-title text-6xl"
+          style={{ color: 'color-mix(in srgb, var(--color-paper) 12%, transparent)' }}
+        >
+          {data.event.title}
+        </p>
       </div>
     )
   }

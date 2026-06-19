@@ -6,9 +6,9 @@ export function OutroMode({ data }: { data: EventData }) {
   const { event, sponsors } = data
   return (
     <div className="relative z-2 flex h-full flex-col items-center justify-center gap-20 pb-16 text-center">
-      <div>
+      <div className="stage-card max-w-[1300px] text-center">
         <p className="micro-label mb-8">Merci</p>
-        <h1 className="display-title max-w-[1300px] text-7xl">
+        <h1 className="display-title text-7xl">
           {event.closingMessage ?? event.title}
         </h1>
       </div>

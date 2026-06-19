@@ -61,6 +61,74 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Carte de scène — surface signature de l'EP ──
+   Verre dépoli clair posé sur le fond / l'image de branding : voile blanc
+   translucide, flou 15px, double filet lumineux (::before haut, ::after gauche)
+   et halo interne qui décollent la carte de la scène. Texte hérité des
+   variables de branding (--color-paper). */
+
+.blurry {
+  background: rgba(0, 0, 0, 0.21);
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 8px 32px, rgba(0, 0, 0, 0.05) 0px 2px 8px, rgba(255, 255, 255, 0.3) 0px 1px 0px inset, rgba(255, 255, 255, 0.15) 0px -1px 0px inset;
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.stage-card {
+  border-radius: 20px;
+  padding: 40px;
+  background: rgba(0, 0, 0, 0.21);
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 8px 32px, rgba(0, 0, 0, 0.05) 0px 2px 8px, rgba(255, 255, 255, 0.3) 0px 1px 0px inset, rgba(255, 255, 255, 0.15) 0px -1px 0px inset;
+  backdrop-filter: blur(16px) saturate(1.2);
+
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Filet lumineux supérieur. */
+.stage-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+}
+
+/* Filet lumineux gauche. */
+.stage-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5),
+    transparent,
+    rgba(255, 255, 255, 0.3)
+  );
+}
+
+/* Cadre média dans une carte (avatar speaker, image définition). */
+.stage-card-media {
+  border: 3px solid color-mix(in srgb, var(--color-paper) 75%, transparent);
+}
+
+/* Filet séparateur interne — demi-opacité, couleur de texte branding. */
+.stage-card-divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--color-paper) 18%, transparent);
+}
+
 /* Atmosphère : grain + vignette, en pseudo-éléments au-dessus du fond,
    sous le contenu (z-index 1 / contenu ≥ 2). Pas de repaint : statique. */
 .stage-atmosphere::before {

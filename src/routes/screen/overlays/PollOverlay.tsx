@@ -83,7 +83,7 @@ export function PollOverlay({ id }: { id: string }) {
   const view = pollView(poll.status, poll.kind, poll.showResults, totalVotes(results))
 
   return (
-    <div className="relative rounded-3xl border border-white/10 bg-ink-soft/95 p-10 shadow-2xl backdrop-blur-md">
+    <div className="stage-card relative">
       <p className="micro-label mb-5 text-accent">
         {poll.kind === 'versus' ? 'Vote' : 'Sondage'}
         {isLive && ' — en cours'}

@@ -26,14 +26,16 @@ function AssoSlide({ data }: { data: EventData }) {
   const parsed = assoContentSchema.safeParse(data.event.assoContent)
   const content = parsed.success ? parsed.data : null
   return (
-    <div className="flex h-full flex-col items-center justify-center pb-16 text-center">
-      <p className="micro-label mb-8">Présenté par</p>
-      <h1 className="display-title max-w-[1200px] text-8xl">{content?.name ?? ''}</h1>
-      {content?.description && (
-        <p className="mt-8 max-w-[900px] text-2xl leading-relaxed text-paper-dim">
-          {content.description}
-        </p>
-      )}
+    <div className="flex h-full flex-col items-center justify-center pb-16">
+      <div className="stage-card flex max-w-[1200px] flex-col items-center text-center">
+        <p className="micro-label mb-8">Présenté par</p>
+        <h1 className="display-title text-8xl">{content?.name ?? ''}</h1>
+        {content?.description && (
+          <p className="mt-8 max-w-[900px] text-2xl leading-relaxed text-paper-dim">
+            {content.description}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -41,27 +43,30 @@ function AssoSlide({ data }: { data: EventData }) {
 function TitleSlide({ data }: { data: EventData }) {
   const { event } = data
   return (
-    <div className="flex h-full flex-col items-center justify-center pb-16 text-center">
-      <MicroHeader data={data} />
-      <h1 className="display-title max-w-[1300px] text-8xl">{event.title}</h1>
-      {event.eventDate && (
-        <p className="micro-label mt-10">
-          {new Date(event.eventDate).toLocaleDateString('fr-FR', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          })}
-        </p>
-      )}
+    <div className="flex h-full flex-col items-center justify-center pb-16">
+      <div className="stage-card flex max-w-[1300px] flex-col items-center text-center">
+        <MicroHeader data={data} />
+        <h1 className="display-title text-8xl">{event.title}</h1>
+        {event.eventDate && (
+          <p className="micro-label mt-10">
+            {new Date(event.eventDate).toLocaleDateString('fr-FR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
 
 function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
   return (
-    <div className="flex h-full items-center justify-center gap-20 px-24 pb-16">
-      <SpeakerAvatar speaker={speaker} className="h-[420px] w-[340px] rounded-3xl text-8xl" />
-      <div className="max-w-[760px]">
+    <div className="flex h-full items-center justify-center px-24 pb-16">
+      <div className="stage-card flex items-center gap-16">
+        <SpeakerAvatar speaker={speaker} className="stage-card-media h-[420px] w-[340px] text-8xl" />
+        <div className="max-w-[680px]">
         <p className="micro-label mb-6 text-accent">{role}</p>
         <h1 className="display-title text-7xl">
           {speaker.firstName}
@@ -76,6 +81,7 @@ function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
             {speaker.bio}
           </p>
         )}
+        </div>
       </div>
     </div>
   )
@@ -97,9 +103,9 @@ function GridSlide({ data }: { data: EventData }) {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 * i, duration: 0.4, ease: EASE }}
-            className="flex w-[270px] flex-col items-center gap-4 rounded-3xl border border-white/10 bg-ink-soft p-7 text-center"
+            className="stage-card flex w-[290px] flex-col items-center gap-4 text-center"
           >
-            <SpeakerAvatar speaker={speaker} className="h-32 w-32 rounded-2xl text-5xl" />
+            <SpeakerAvatar speaker={speaker} className="stage-card-media h-32 w-32 text-5xl" />
             <div>
               <p className="display-title text-2xl">
                 {speaker.firstName} {speaker.lastName}

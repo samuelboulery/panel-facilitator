@@ -91,6 +91,9 @@ export default function ScreenRoute() {
     ? ({
         '--color-ink': b.bgColor,
         '--color-paper': b.textColor,
+        // Variante atténuée dérivée de la couleur de texte du branding : tout
+        // le texte de l'EP suit le branding, y compris les libellés secondaires.
+        '--color-paper-dim': `color-mix(in srgb, ${b.textColor} 65%, transparent)`,
         '--color-accent': b.accentColor,
         backgroundColor: b.bgColor,
         ...(b.bgImageUrl && {
