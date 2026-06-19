@@ -159,7 +159,7 @@ export function ImageField({
 }: {
   label: string
   url: string | null
-  folder: 'speakers' | 'sponsors' | 'definitions'
+  folder: 'speakers' | 'sponsors' | 'definitions' | 'branding'
   maxDim: number
   onUploaded: (url: string) => void
 }) {

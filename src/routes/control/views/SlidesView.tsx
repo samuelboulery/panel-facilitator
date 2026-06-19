@@ -60,6 +60,7 @@ function slideToState(slide: DeckSlide): ScreenState {
     speakersBannerVisible: true,
     qrVisible: false,
     timerStartedAt: null,
+    cardPositions: {},
   }
   switch (slide.kind) {
     case 'attente':
