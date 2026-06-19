@@ -13,6 +13,7 @@ import { TextField } from './components/fields'
 import { ResetControl } from './sections/ResetControl'
 import { ChecklistSection } from './sections/ChecklistSection'
 import { EventSection } from './sections/EventSection'
+import { BrandingSection } from './sections/BrandingSection'
 import {
   ContentsSection,
   DefinitionsSection,
@@ -24,6 +25,7 @@ import {
 
 const SECTIONS = [
   { key: 'event', label: 'Événement' },
+  { key: 'branding', label: 'Branding' },
   { key: 'speakers', label: 'Speakers' },
   { key: 'sponsors', label: 'Sponsors' },
   { key: 'contents', label: 'Contenus' },
@@ -192,6 +194,7 @@ export default function AdminRoute() {
 
         <main key={`${section}-${resetKey}`} className="rounded-3xl bg-control-panel p-5">
           {section === 'event' && <EventSection event={event} onSaved={reloadEvent} />}
+          {section === 'branding' && <BrandingSection event={event} onSaved={reloadEvent} />}
           {section === 'speakers' && <SpeakersSection eventId={event.id} />}
           {section === 'sponsors' && <SponsorsSection eventId={event.id} />}
           {section === 'contents' && <ContentsSection eventId={event.id} />}

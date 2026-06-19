@@ -2,7 +2,7 @@
 // Lecture seule : s'abonne à screen_state et rend le mode courant.
 // Mode dégradé : connexion perdue ⇒ dernier état rendu conservé, AUCUN
 // indicateur visible pour l'audience (contrainte PRD) ; reconnexion auto.
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { authenticateScreen, subscribeScreenState } from '../../realtime/screenState'
@@ -83,8 +83,26 @@ export default function ScreenRoute() {
     return <div className="screen-surface stage-atmosphere" />
   }
 
+  // Branding : on surcharge les variables CSS du thème (fond/texte/accent) au
+  // niveau de la surface — toute la sous-arborescence en hérite via var(). L'image
+  // se superpose à la couleur de fond, sous l'atmosphère et le contenu.
+  const b = data.branding
+  const brandStyle = b
+    ? ({
+        '--color-ink': b.bgColor,
+        '--color-paper': b.textColor,
+        '--color-accent': b.accentColor,
+        backgroundColor: b.bgColor,
+        ...(b.bgImageUrl && {
+          backgroundImage: `url(${b.bgImageUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }),
+      } as CSSProperties)
+    : undefined
+
   return (
-    <div className="screen-surface stage-atmosphere">
+    <div className="screen-surface stage-atmosphere" style={brandStyle}>
       <AnimatePresence mode="wait">
         <motion.div
           key={state.mode}

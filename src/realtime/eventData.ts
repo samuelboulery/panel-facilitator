@@ -4,6 +4,7 @@
 // (PLAN.md D9) : fetch initial + INSERT temps réel.
 import { supabase } from './client'
 import {
+  brandingRowSchema,
   contentRowSchema,
   definitionRowSchema,
   eventPublicRowSchema,
@@ -13,6 +14,7 @@ import {
   sponsorRowSchema,
 } from '../shared/schemas'
 import type {
+  Branding,
   Content,
   Definition,
   EventPublic,
@@ -29,6 +31,8 @@ export interface EventData {
   sponsors: Sponsor[]
   contents: Content[]
   definitions: Definition[]
+  /** Palette + image de fond appliquées à l'EP. Null = thème par défaut. */
+  branding: Branding | null
 }
 
 async function fetchList<T>(
@@ -60,14 +64,33 @@ export async function fetchEventData(slug: string): Promise<EventData | null> {
   if (!parsed.success) return null
   const event = parsed.data
 
-  const [speakers, sponsors, contents, definitions] = await Promise.all([
+  const [speakers, sponsors, contents, definitions, branding] = await Promise.all([
     fetchList<Speaker>('speakers', event.id, speakerRowSchema),
     fetchList<Sponsor>('sponsors', event.id, sponsorRowSchema),
     fetchList<Content>('contents', event.id, contentRowSchema),
     fetchList<Definition>('definitions', event.id, definitionRowSchema),
+    fetchBranding(event.id, event.brandingProfileId),
   ])
 
-  return { event, speakers, sponsors, contents, definitions }
+  return { event, speakers, sponsors, contents, definitions, branding }
+}
+
+// Profil actif de l'événement ; à défaut (aucun sélectionné), le premier créé.
+async function fetchBranding(
+  eventId: string,
+  activeId: string | null,
+): Promise<Branding | null> {
+  let query = supabase
+    .from('branding_profiles')
+    .select('bg_color, text_color, accent_color, bg_image_url')
+    .eq('event_id', eventId)
+  query = activeId
+    ? query.eq('id', activeId)
+    : query.order('created_at', { ascending: true }).limit(1)
+  const { data, error } = await query.maybeSingle()
+  if (error || !data) return null
+  const parsed = brandingRowSchema.safeParse(data)
+  return parsed.success ? parsed.data : null
 }
 
 export async function fetchQuestion(id: string): Promise<Question | null> {

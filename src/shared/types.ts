@@ -43,6 +43,14 @@ export interface EventPublic {
   assoContent: unknown
   qrUrl: string | null
   sponsorScrollSpeed: number
+  brandingProfileId: string | null
+}
+
+export interface Branding {
+  bgColor: string
+  textColor: string
+  accentColor: string
+  bgImageUrl: string | null
 }
 
 export interface Speaker {
