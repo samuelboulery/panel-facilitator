@@ -8,7 +8,7 @@ import {
   initialScreenState,
   type ScreenAction,
 } from '../../../shared/stateMachine'
-import type { ScreenState, Mode, Overlay } from '../../../shared/types'
+import type { ScreenState, Mode, Overlay, CardPosition } from '../../../shared/types'
 import type { ControlSession } from '../../../realtime/mutations'
 import * as mutations from '../../../realtime/mutations'
 import { subscribeScreenState, type ConnectionStatus } from '../../../realtime/screenState'
@@ -28,6 +28,8 @@ export interface ControlState {
   closeOverlay: () => void
   toggleSpeakersBanner: () => void
   toggleQr: () => void
+  /** Repositionne une carte de scène (drag & drop) ; persiste la map fusionnée. */
+  setCardPosition: (key: string, pos: CardPosition) => void
 }
 
 export function useControlState(session: ControlSession): ControlState {
@@ -143,5 +145,16 @@ export function useControlState(session: ControlSession): ControlState {
       const next = !screenRef.current.qrVisible
       dispatch({ type: 'TOGGLE_QR' }, () => mutations.setQrVisible(session, next))
     }, [dispatch, session]),
+    // Position : cosmétique, hors machine à états. Optimiste + persistance de la map fusionnée.
+    setCardPosition: useCallback(
+      (key: string, pos: CardPosition) => {
+        const next = { ...screenRef.current.cardPositions, [key]: pos }
+        setScreen((s) => ({ ...s, cardPositions: next }))
+        mutations.setCardPositions(session, next).catch((err: unknown) => {
+          setLastError(err instanceof Error ? err.message : 'Erreur réseau')
+        })
+      },
+      [session],
+    ),
   }
 }

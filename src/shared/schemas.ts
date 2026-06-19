@@ -21,6 +21,15 @@ export const screenStateRowSchema = z
     speakers_banner_visible: z.boolean(),
     qr_visible: z.boolean(),
     timer_started_at: z.string().nullable().default(null),
+    card_positions: z
+      .record(
+        z.object({
+          x: z.number(),
+          y: z.number(),
+          edge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
+        }),
+      )
+      .default({}),
   })
   .transform(
     (row): ScreenState => ({
@@ -31,6 +40,7 @@ export const screenStateRowSchema = z
       speakersBannerVisible: row.speakers_banner_visible,
       qrVisible: row.qr_visible,
       timerStartedAt: row.timer_started_at,
+      cardPositions: row.card_positions,
     }),
   )
 

@@ -48,20 +48,29 @@ function ResultBars({ poll, results }: { poll: Poll; results: PollResults }) {
 
 function VersusLive({ poll }: { poll: Poll }) {
   // Pendant le vote : les deux camps, AUCUN chiffre (suspense voulu).
+  // Badge VS = élément flex centré dans la gouttière entre les deux camps.
+  const options = poll.options.slice(0, 2)
   return (
     <div className="flex items-stretch gap-6">
-      {poll.options.slice(0, 2).map((option, i) => (
+      {options[0] && (
         <div
-          key={option.id}
           className="flex flex-1 items-center justify-center rounded-2xl px-8 py-14"
-          style={{ background: `color-mix(in srgb, ${VERSUS_COLORS[i]} 28%, transparent)` }}
+          style={{ background: `color-mix(in srgb, ${VERSUS_COLORS[0]} 28%, transparent)` }}
         >
-          <span className="display-title text-6xl">{option.label}</span>
+          <span className="display-title text-6xl">{options[0].label}</span>
         </div>
-      ))}
-      <div className="absolute left-1/2 top-1/2 z-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink px-5 py-3">
+      )}
+      <div className="z-2 self-center rounded-full bg-ink px-5 py-3">
         <span className="font-mono text-xl font-semibold text-paper-dim">VS</span>
       </div>
+      {options[1] && (
+        <div
+          className="flex flex-1 items-center justify-center rounded-2xl px-8 py-14"
+          style={{ background: `color-mix(in srgb, ${VERSUS_COLORS[1]} 28%, transparent)` }}
+        >
+          <span className="display-title text-6xl">{options[1].label}</span>
+        </div>
+      )}
     </div>
   )
 }

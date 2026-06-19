@@ -9,7 +9,7 @@ import type { EventData } from '../../../realtime/eventData'
 import type { ControlSession } from '../../../realtime/mutations'
 import { setSpeakerHidden } from '../../../realtime/mutations'
 import { buildIntroSlides, clampIntroIndex, type IntroSlide } from '../../../shared/introSlides'
-import type { Content, ScreenState } from '../../../shared/types'
+import type { Content, ScreenState, CardPosition } from '../../../shared/types'
 import type { ControlState } from '../hooks/useControlState'
 import { StagePreview } from './StagePreview'
 
@@ -67,9 +67,10 @@ function slideToState(slide: DeckSlide): ScreenState {
     case 'intro':
       return { ...base, mode: 'intro', introSlideIndex: slide.introIndex }
     case 'dynamique':
-      return { ...base, mode: 'dynamique' }
+      // QR visible dans l'aperçu IR pour pouvoir le positionner (l'EP réel suit qrVisible).
+      return { ...base, mode: 'dynamique', qrVisible: true }
     case 'content':
-      return { ...base, mode: 'dynamique', mainContentId: slide.content.id }
+      return { ...base, mode: 'dynamique', mainContentId: slide.content.id, qrVisible: true }
     case 'outro':
       return { ...base, mode: 'outro' }
   }
@@ -105,10 +106,15 @@ export function SlidesView({
   data,
   control,
   session,
+  editLayout,
+  onToggleEditLayout,
 }: {
   data: EventData
   control: ControlState
   session: ControlSession
+  /** Édition des positions de cartes (piloté par ControlShell — gèle aussi le pager). */
+  editLayout: boolean
+  onToggleEditLayout: () => void
 }) {
   const deck = useMemo(() => buildDeck(data), [data])
   const index = currentDeckIndex(deck, control)
@@ -145,15 +151,36 @@ export function SlidesView({
 
   return (
     <div className="flex h-full flex-col gap-3">
+      {/* Bascule édition des positions de cartes (drag) vs navigation (swipe) */}
+      <div className="flex justify-end px-2">
+        <button
+          type="button"
+          onClick={onToggleEditLayout}
+          aria-pressed={editLayout}
+          className={`rounded-lg px-3 py-1.5 font-mono text-xs transition active:scale-95 ${
+            editLayout ? 'bg-accent text-white' : 'bg-control-card text-control-dim'
+          }`}
+        >
+          {editLayout ? '✓ Édition des positions' : 'Déplacer les cartes'}
+        </button>
+      </div>
+
       {/* Carrousel : précédente | courante (grande) | suivante (maquette 15) */}
       <div className="relative flex min-h-[320px] flex-1 items-center justify-center overflow-hidden">
         {prev && (
-          <PeekCard side="left" slide={prev} data={data} onTap={() => goTo(index - 1)} />
+          <PeekCard
+            side="left"
+            slide={prev}
+            data={data}
+            cardPositions={control.screen.cardPositions}
+            onTap={() => goTo(index - 1)}
+          />
         )}
 
         <motion.div
           className="z-10 w-[74%]"
-          drag="x"
+          // Édition active : swipe horizontal coupé pour ne pas changer de slide en déplaçant une carte.
+          drag={editLayout ? false : 'x'}
           dragSnapToOrigin
           dragElastic={0.2}
           onDragEnd={(_, info) => {
@@ -169,13 +196,27 @@ export function SlidesView({
               exit={{ opacity: 0, scale: 0.96 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             >
-              {current && <SlidePreview slide={current} data={data} session={session} />}
+              {current && (
+                <SlidePreview
+                  slide={current}
+                  data={data}
+                  session={session}
+                  control={control}
+                  editable={editLayout}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </motion.div>
 
         {next && (
-          <PeekCard side="right" slide={next} data={data} onTap={() => goTo(index + 1)} />
+          <PeekCard
+            side="right"
+            slide={next}
+            data={data}
+            cardPositions={control.screen.cardPositions}
+            onTap={() => goTo(index + 1)}
+          />
         )}
       </div>
 
@@ -230,23 +271,25 @@ function PeekCard({
   side,
   slide,
   data,
+  cardPositions,
   onTap,
 }: {
   side: 'left' | 'right'
   slide: DeckSlide
   data: EventData
+  cardPositions: Record<string, CardPosition>
   onTap: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onTap}
-      className={`absolute top-1/2 z-0 w-[20%] -translate-y-1/2 overflow-hidden rounded-2xl opacity-70 shadow-sm transition active:scale-95 ${
+      className={`absolute top-1/2 z-0 w-[20%] -translate-y-1/2 overflow-hidden rounded-2xl border border-black opacity-70 transition active:scale-95 ${
         side === 'left' ? '-left-[8%]' : '-right-[8%]'
       }`}
       aria-label={slide.label}
     >
-      <StagePreview data={data} state={slideToState(slide)} />
+      <StagePreview data={data} state={slideToState(slide)} cardPositions={cardPositions} />
     </button>
   )
 }
@@ -258,14 +301,23 @@ function SlidePreview({
   slide,
   data,
   session,
+  control,
+  editable,
 }: {
   slide: DeckSlide
   data: EventData
   session: ControlSession
+  control: ControlState
+  editable: boolean
 }) {
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl shadow-md">
-      <StagePreview data={data} state={slideToState(slide)} />
+    <div className="relative w-full overflow-hidden rounded-2xl border border-black">
+      <StagePreview
+        data={data}
+        state={slideToState(slide)}
+        cardPositions={control.screen.cardPositions}
+        onCardDrag={editable ? control.setCardPosition : undefined}
+      />
 
       <p className="absolute top-3 left-3 z-30 rounded bg-black/40 px-2 py-1 font-mono text-[11px] tracking-[0.2em] text-white/80 uppercase backdrop-blur-sm">
         {slide.hint}

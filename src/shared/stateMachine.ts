@@ -22,6 +22,7 @@ export const initialScreenState: ScreenState = {
   speakersBannerVisible: true,
   qrVisible: true,
   timerStartedAt: null,
+  cardPositions: {},
 }
 
 export type ScreenAction =

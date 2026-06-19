@@ -49,6 +49,9 @@ function ControlShell({ session }: { session: ControlSession }) {
   const [definitions, setDefinitions] = useState<Definition[]>([])
   const [viewIndex, setViewIndex] = useState(1) // Gestion par défaut
   const [launch, setLaunch] = useState<LaunchPayload | null>(null)
+  // Édition des positions de cartes (vue Slides) : gèle tout swipe horizontal
+  // (cartes ET pager d'écrans) pour ne déplacer que les cartes.
+  const [editLayout, setEditLayout] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -144,7 +147,7 @@ function ControlShell({ session }: { session: ControlSession }) {
         className="flex min-h-0 flex-1 pt-3"
         animate={{ x: `${offsetPct}%` }}
         transition={{ type: 'tween', duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        drag="x"
+        drag={editLayout ? false : 'x'}
         dragDirectionLock
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.12}
@@ -154,7 +157,14 @@ function ControlShell({ session }: { session: ControlSession }) {
         }}
       >
         {[
-          <SlidesView key="slides" data={data} control={control} session={session} />,
+          <SlidesView
+            key="slides"
+            data={data}
+            control={control}
+            session={session}
+            editLayout={editLayout}
+            onToggleEditLayout={() => setEditLayout((v) => !v)}
+          />,
           <GestionView
             key="gestion"
             control={control}

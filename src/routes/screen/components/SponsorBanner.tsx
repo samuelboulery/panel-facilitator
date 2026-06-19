@@ -49,7 +49,7 @@ export function SponsorBanner({ sponsors, scrollSpeed }: SponsorBannerProps) {
   )
 
   return (
-    <div ref={containerRef} className="blurry absolute inset-x-0 bottom-0 z-20 h-16">
+    <div ref={containerRef} className="blurry z-20 h-16 shrink-0">
       <div
         className="sponsor-track h-full items-center"
         style={{ '--marquee-duration': `${scrollSpeed}s` } as React.CSSProperties}

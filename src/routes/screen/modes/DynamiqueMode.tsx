@@ -1,12 +1,13 @@
 // Mode DYNAMIQUE (PRD 5.4) — cœur de la table ronde.
-// Layout flexbox en colonne : haut = overlay (scène d'affiche) + QR ;
-// centre = contenu principal (embed whitelisté / image / vidéo) ou vide ;
-// bas = carte titre / tiers inférieur. Aucun positionnement absolu.
+// Panneaux positionnés en absolu sur la scène 1920×1080 : QR ancré en haut à
+// droite, contenu principal plein cadre, et un seul groupe en flux — le titre
+// + les éléments dynamiques (overlays) qui apparaissent — ancré en bas.
 import type { EventData } from '../../../realtime/eventData'
 import type { Content, EventPublic, ScreenState } from '../../../shared/types'
 import { toEmbedUrl } from '../../../shared/embed'
 import { QrBadge } from '../components/QrBadge'
 import { OverlayHost } from '../overlays/OverlayHost'
+import { MovableCard } from '../components/MovableCard'
 
 function formatEventDate(iso: string | null): string | null {
   if (!iso) return null
@@ -25,7 +26,7 @@ function RestingScene({ event }: { event: EventPublic }) {
   const date = formatEventDate(event.eventDate)
   const lead = event.subtitle ?? event.edition
   return (
-    <div className="stage-card flex w-[820px] max-w-[58%] flex-col gap-5">
+    <MovableCard slideKey="dynamique-resting" className="stage-card flex w-[820px] max-w-[58%] flex-col gap-5">
       {(lead || date) && (
         <div className="flex items-center gap-5 text-3xl text-paper">
           {lead && <span>{lead}</span>}
@@ -34,7 +35,7 @@ function RestingScene({ event }: { event: EventPublic }) {
         </div>
       )}
       <p className="display-title text-7xl text-paper">{event.title}</p>
-    </div>
+    </MovableCard>
   )
 }
 
@@ -80,23 +81,23 @@ export function DynamiqueMode({ data, state }: DynamiqueModeProps) {
   const resting = !content || !url
 
   return (
-    <div className="relative z-2 flex h-full flex-col gap-8 p-16">
-      {/* Haut : overlay (scène d'affiche) à gauche, QR à droite */}
-      <div className="flex shrink-0 items-start justify-between gap-8">
-        <div className="min-w-0 flex-1">
-          {resting && <OverlayHost overlay={state.overlay} position="top" />}
+    <div className="relative z-2 h-full">
+      {/* Contenu principal plein cadre — ancré en absolu, sous les panneaux */}
+      {!resting && (
+        <div className="absolute inset-16">
+          <MainContent content={content} />
         </div>
-        <QrBadge url={data.event.qrUrl} visible={state.qrVisible} />
-      </div>
+      )}
 
-      {/* Centre + bas : contenu plein cadre puis tiers inférieur, ou titre en bas */}
-      <div className="flex min-h-0 flex-1 flex-col justify-end gap-8">
-        {!resting && (
-          <div className="min-h-0 flex-1">
-            <MainContent content={content} />
-          </div>
-        )}
-        {!resting && <OverlayHost overlay={state.overlay} position="bottom" />}
+      {/* QR : ancré en haut à droite, repositionnable */}
+      <MovableCard slideKey="dynamique-qr" className="absolute right-16 top-16">
+        <QrBadge url={data.event.qrUrl} visible={state.qrVisible} />
+      </MovableCard>
+
+      {/* Groupe dynamique : titre + éléments dynamiques (overlays) qui
+          apparaissent — seul ensemble qui reste en flux. Ancré en bas. */}
+      <div className="absolute inset-x-16 bottom-16 flex flex-col gap-8">
+        <OverlayHost overlay={state.overlay} position={resting ? 'top' : 'bottom'} />
         {resting && <RestingScene event={data.event} />}
       </div>
     </div>

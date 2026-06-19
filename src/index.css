@@ -166,6 +166,34 @@
     radial-gradient(60% 50% at 18% 0%, rgba(79, 93, 255, 0.13), transparent 70%);
 }
 
+/* Aperçu des slides dans l'IR (/control) : rendu épuré — surface et cartes
+   transparentes, traits et textes noirs — au lieu du rendu scénique sombre de
+   l'EP. Scopé à .control-preview : n'affecte jamais /screen. */
+.control-preview .screen-surface {
+  background: transparent;
+  --color-paper: #000;
+  --color-paper-dim: #000;
+}
+.control-preview .stage-atmosphere::before,
+.control-preview .stage-atmosphere::after {
+  display: none;
+}
+.control-preview .stage-card {
+  background: transparent;
+  /* Carte rendue à l'échelle réduite (~0.3×) : un trait 1px tombe sous le
+     pixel sur les bords droits et ne survit qu'aux angles. Trait épais pour
+     qu'il reste visible une fois la surface 1920×1080 réduite. */
+  border: 4px solid #000;
+  color: #000;
+  box-shadow: none;
+  backdrop-filter: none;
+  animation: none;
+}
+.control-preview .stage-card::before,
+.control-preview .stage-card::after {
+  display: none;
+}
+
 /* Défilement du bandeau sponsors — translation pure (compositor only). */
 @keyframes sponsor-marquee {
   from { transform: translateX(0); }

@@ -10,6 +10,7 @@ import { roleLabel } from '../../../shared/roleLabel'
 import { assoContentSchema } from '../../../shared/schemas'
 import type { ScreenState, Speaker } from '../../../shared/types'
 import { SpeakerAvatar } from '../components/SpeakerAvatar'
+import { MovableCard } from '../components/MovableCard'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -26,8 +27,8 @@ function AssoSlide({ data }: { data: EventData }) {
   const parsed = assoContentSchema.safeParse(data.event.assoContent)
   const content = parsed.success ? parsed.data : null
   return (
-    <div className="flex h-full flex-col items-center justify-center pb-16">
-      <div className="stage-card flex max-w-[1200px] flex-col items-center text-center">
+    <div className="absolute inset-0 flex flex-col items-center justify-center">
+      <MovableCard slideKey="intro-asso" className="stage-card flex max-w-[1200px] flex-col items-center text-center">
         <p className="micro-label mb-8">Présenté par</p>
         <h1 className="display-title text-8xl">{content?.name ?? ''}</h1>
         {content?.description && (
@@ -35,7 +36,7 @@ function AssoSlide({ data }: { data: EventData }) {
             {content.description}
           </p>
         )}
-      </div>
+      </MovableCard>
     </div>
   )
 }
@@ -43,8 +44,8 @@ function AssoSlide({ data }: { data: EventData }) {
 function TitleSlide({ data }: { data: EventData }) {
   const { event } = data
   return (
-    <div className="flex h-full flex-col items-center justify-center pb-16">
-      <div className="stage-card flex max-w-[1300px] flex-col items-center text-center">
+    <div className="absolute inset-0 flex flex-col items-center justify-center">
+      <MovableCard slideKey="intro-title" className="stage-card flex max-w-[1300px] flex-col items-center text-center">
         <MicroHeader data={data} />
         <h1 className="display-title text-8xl">{event.title}</h1>
         {event.eventDate && (
@@ -56,15 +57,15 @@ function TitleSlide({ data }: { data: EventData }) {
             })}
           </p>
         )}
-      </div>
+      </MovableCard>
     </div>
   )
 }
 
 function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
   return (
-    <div className="flex h-full items-center justify-center px-24 pb-16">
-      <div className="stage-card flex items-center gap-16">
+    <div className="absolute inset-0 flex items-center justify-center px-24">
+      <MovableCard slideKey={`intro-person-${speaker.id}`} className="stage-card flex items-center gap-16">
         <SpeakerAvatar speaker={speaker} className="stage-card-media h-[420px] w-[340px] text-8xl" />
         <div className="max-w-[680px]">
         <p className="micro-label mb-6 text-accent">{role}</p>
@@ -82,7 +83,7 @@ function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
           </p>
         )}
         </div>
-      </div>
+      </MovableCard>
     </div>
   )
 }
@@ -91,7 +92,8 @@ function GridSlide({ data }: { data: EventData }) {
   const panel = data.speakers.filter((s) => !s.isHost && !s.hidden)
   const cols = panel.length <= 3 ? panel.length : panel.length === 4 ? 4 : 3
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-14 pb-16">
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-14">
+      <MovableCard slideKey="intro-grid" className="flex flex-col items-center gap-14">
       <p className="micro-label">Nos intervenant·es</p>
       <div
         className="grid gap-10"
@@ -117,6 +119,7 @@ function GridSlide({ data }: { data: EventData }) {
           </motion.div>
         ))}
       </div>
+      </MovableCard>
     </div>
   )
 }
@@ -143,7 +146,7 @@ export function IntroMode({ data, state }: { data: EventData; state: ScreenState
   const slide = slides[index]
 
   return (
-    <div className="relative z-2 h-full">
+    <div className="relative z-2 flex h-full">
       <AnimatePresence mode="wait">
         <motion.div
           key={`${slide.kind}-${slide.speaker?.id ?? index}`}
@@ -151,7 +154,7 @@ export function IntroMode({ data, state }: { data: EventData; state: ScreenState
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -48 }}
           transition={{ duration: 0.4, ease: EASE }}
-          className="absolute inset-0"
+          className="min-w-0 flex-1"
         >
           <SlideContent slide={slide} data={data} />
         </motion.div>

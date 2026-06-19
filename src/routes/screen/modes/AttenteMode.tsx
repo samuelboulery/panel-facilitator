@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { EventData } from '../../../realtime/eventData'
 import { useCountdown } from '../hooks/useCountdown'
 import { SpeakerAvatar } from '../components/SpeakerAvatar'
+import { MovableCard } from '../components/MovableCard'
 
 const ROTATION_MS = 6000
 
@@ -118,8 +119,12 @@ export function AttenteMode({ data }: { data: EventData }) {
   const date = formatDate(event.eventDate)
 
   return (
-    <div className="relative z-2 flex h-full items-center justify-between gap-16 px-20 pb-28">
-      <section className="stage-card flex max-w-[860px] flex-col gap-6">
+    <div className="relative z-2 h-full">
+      <MovableCard
+        as="section"
+        slideKey="attente-title"
+        className="stage-card absolute left-20 top-1/2 flex max-w-[860px] -translate-y-1/2 flex-col gap-6"
+      >
         <div className="flex items-center gap-6 text-3xl">
           <span>{label}</span>
           {date && (
@@ -131,9 +136,11 @@ export function AttenteMode({ data }: { data: EventData }) {
         </div>
         <h1 className="display-title text-8xl">{event.title}</h1>
         <Timer startAt={event.startAt} />
-      </section>
+      </MovableCard>
 
-      <SpeakersCard data={data} />
+      <MovableCard slideKey="attente-speakers" className="absolute right-20 top-1/2 -translate-y-1/2">
+        <SpeakersCard data={data} />
+      </MovableCard>
     </div>
   )
 }
