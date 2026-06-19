@@ -4,7 +4,7 @@
 -- dans le repo, survivent à db reset et à un setup neuf, aucun upload storage requis.
 
 insert into events (slug, title, subtitle, edition, event_date, start_at,
-                    closing_message, asso_slide_enabled, qr_url, pin_hash, screen_token)
+                    closing_message, asso_slide_enabled, qr_url, sponsor_scroll_speed, pin_hash, screen_token)
 values (
   'demo',
   'L''IA va-t-elle remplacer les designers ?',
@@ -15,6 +15,7 @@ values (
   'Merci à tous et à nos sponsors !',
   true,
   'http://localhost:5173/q/demo',
+  60,
   extensions.crypt('1234', extensions.gen_salt('bf')),
   'demo-screen-token-dev-only'
 );

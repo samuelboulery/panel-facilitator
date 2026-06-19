@@ -61,6 +61,89 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Carte de scène — surface signature de l'EP ──
+   Verre dépoli clair posé sur le fond / l'image de branding : voile blanc
+   translucide, flou 15px, double filet lumineux (::before haut, ::after gauche)
+   et halo interne qui décollent la carte de la scène. Texte hérité des
+   variables de branding (--color-paper). */
+
+.blurry {
+  background: rgba(0, 0, 0, 0.21);
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 8px 32px, rgba(0, 0, 0, 0.05) 0px 2px 8px, rgba(255, 255, 255, 0.3) 0px 1px 0px inset, rgba(255, 255, 255, 0.15) 0px -1px 0px inset;
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.stage-card {
+  border-radius: 20px;
+  padding: 40px;
+  background: rgba(0, 0, 0, 0.21);
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 8px 32px, rgba(0, 0, 0, 0.05) 0px 2px 8px, rgba(255, 255, 255, 0.3) 0px 1px 0px inset, rgba(255, 255, 255, 0.15) 0px -1px 0px inset;
+  backdrop-filter: blur(16px) saturate(1.2);
+
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+
+  /* Un ancêtre animé (transform/opacity/will-change de framer) suspend le
+     backdrop-filter le temps de l'anim, puis le flou « pop » d'un coup à la
+     fin. On le fait plutôt monter en douceur : délai = durée du glissement
+     (0.4s), puis rampe blur(0)→blur(16px). `both` garde blur 0 avant le délai. */
+  animation: stage-card-blur-in 0.3s ease-out 0.4s both;
+}
+
+@keyframes stage-card-blur-in {
+  from {
+    backdrop-filter: blur(0) saturate(1.2);
+  }
+  to {
+    backdrop-filter: blur(16px) saturate(1.2);
+  }
+}
+
+/* Filet lumineux supérieur. */
+.stage-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+}
+
+/* Filet lumineux gauche. */
+.stage-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5),
+    transparent,
+    rgba(255, 255, 255, 0.3)
+  );
+}
+
+/* Cadre média dans une carte (avatar speaker, image définition). */
+.stage-card-media {
+  border: 3px solid color-mix(in srgb, var(--color-paper) 75%, transparent);
+}
+
+/* Filet séparateur interne — demi-opacité, couleur de texte branding. */
+.stage-card-divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--color-paper) 18%, transparent);
+}
+
 /* Atmosphère : grain + vignette, en pseudo-éléments au-dessus du fond,
    sous le contenu (z-index 1 / contenu ≥ 2). Pas de repaint : statique. */
 .stage-atmosphere::before {
@@ -81,6 +164,34 @@
   background:
     radial-gradient(120% 90% at 50% 10%, transparent 55%, rgba(0, 0, 0, 0.5) 100%),
     radial-gradient(60% 50% at 18% 0%, rgba(79, 93, 255, 0.13), transparent 70%);
+}
+
+/* Aperçu des slides dans l'IR (/control) : rendu épuré — surface et cartes
+   transparentes, traits et textes noirs — au lieu du rendu scénique sombre de
+   l'EP. Scopé à .control-preview : n'affecte jamais /screen. */
+.control-preview .screen-surface {
+  background: transparent;
+  --color-paper: #000;
+  --color-paper-dim: #000;
+}
+.control-preview .stage-atmosphere::before,
+.control-preview .stage-atmosphere::after {
+  display: none;
+}
+.control-preview .stage-card {
+  background: transparent;
+  /* Carte rendue à l'échelle réduite (~0.3×) : un trait 1px tombe sous le
+     pixel sur les bords droits et ne survit qu'aux angles. Trait épais pour
+     qu'il reste visible une fois la surface 1920×1080 réduite. */
+  border: 4px solid #000;
+  color: #000;
+  box-shadow: none;
+  backdrop-filter: none;
+  animation: none;
+}
+.control-preview .stage-card::before,
+.control-preview .stage-card::after {
+  display: none;
 }
 
 /* Défilement du bandeau sponsors — translation pure (compositor only). */

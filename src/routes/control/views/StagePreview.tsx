@@ -6,18 +6,29 @@
 // et empêcher les iframes (Slides/Figma) de capter l'interaction.
 import { useEffect, useRef, useState } from 'react'
 import type { EventData } from '../../../realtime/eventData'
-import type { ScreenState } from '../../../shared/types'
+import type { ScreenState, CardPosition } from '../../../shared/types'
 import { AttenteMode } from '../../screen/modes/AttenteMode'
 import { IntroMode } from '../../screen/modes/IntroMode'
 import { DynamiqueMode } from '../../screen/modes/DynamiqueMode'
 import { OutroMode } from '../../screen/modes/OutroMode'
 import { SponsorBanner } from '../../screen/components/SponsorBanner'
+import { CardPositionProvider } from '../../screen/components/MovableCard'
 
 const STAGE_W = 1920
 const STAGE_H = 1080
 
-export function StagePreview({ data, state }: { data: EventData; state: ScreenState }) {
+interface StagePreviewProps {
+  data: EventData
+  state: ScreenState
+  /** Positions persistées des cartes (état régie réel, partagé entre les slides). */
+  cardPositions?: Record<string, CardPosition>
+  /** Présent → cartes draggables (aperçu courant uniquement). */
+  onCardDrag?: (key: string, pos: CardPosition) => void
+}
+
+export function StagePreview({ data, state, cardPositions = {}, onCardDrag }: StagePreviewProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0)
 
   // Échelle dérivée de la largeur réelle du conteneur (carte courante ~74 %,
@@ -33,8 +44,9 @@ export function StagePreview({ data, state }: { data: EventData; state: ScreenSt
   }, [])
 
   return (
-    <div ref={ref} className="pointer-events-none relative aspect-video w-full overflow-hidden">
+    <div ref={ref} className="control-preview pointer-events-none relative aspect-video w-full overflow-hidden">
       <div
+        ref={stageRef}
         className="screen-surface stage-atmosphere absolute top-0 left-0"
         style={{
           width: STAGE_W,
@@ -43,11 +55,13 @@ export function StagePreview({ data, state }: { data: EventData; state: ScreenSt
           transformOrigin: 'top left',
         }}
       >
-        {state.mode === 'attente' && <AttenteMode data={data} />}
-        {state.mode === 'intro' && <IntroMode data={data} state={state} />}
-        {state.mode === 'dynamique' && <DynamiqueMode data={data} state={state} />}
-        {state.mode === 'outro' && <OutroMode data={data} />}
-        <SponsorBanner sponsors={data.sponsors} scrollSpeed={data.event.sponsorScrollSpeed} />
+        <CardPositionProvider value={{ positions: cardPositions, onDrag: onCardDrag, stageRef, stageScale: scale }}>
+          {state.mode === 'attente' && <AttenteMode data={data} />}
+          {state.mode === 'intro' && <IntroMode data={data} state={state} />}
+          {state.mode === 'dynamique' && <DynamiqueMode data={data} state={state} />}
+          {state.mode === 'outro' && <OutroMode data={data} />}
+          <SponsorBanner sponsors={data.sponsors} scrollSpeed={data.event.sponsorScrollSpeed} />
+        </CardPositionProvider>
       </div>
     </div>
   )

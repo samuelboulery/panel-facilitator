@@ -58,6 +58,38 @@ export function TextArea({
   )
 }
 
+export function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const id = useId()
+  return (
+    <label htmlFor={id} className="block">
+      <span className="mb-1 block font-mono text-xs tracking-wide text-control-dim">{label}</span>
+      <div className="flex items-center gap-2">
+        <input
+          id={id}
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 w-12 cursor-pointer rounded-lg border border-control-bg bg-white"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-28 rounded-lg border border-control-bg bg-white px-3 py-2 font-mono text-sm outline-control-accent"
+        />
+      </div>
+    </label>
+  )
+}
+
 export function SelectField({
   label,
   value,
@@ -127,7 +159,7 @@ export function ImageField({
 }: {
   label: string
   url: string | null
-  folder: 'speakers' | 'sponsors' | 'definitions'
+  folder: 'speakers' | 'sponsors' | 'definitions' | 'branding'
   maxDim: number
   onUploaded: (url: string) => void
 }) {

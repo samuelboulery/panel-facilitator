@@ -2,7 +2,7 @@
 // Lecture seule : s'abonne à screen_state et rend le mode courant.
 // Mode dégradé : connexion perdue ⇒ dernier état rendu conservé, AUCUN
 // indicateur visible pour l'audience (contrainte PRD) ; reconnexion auto.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { authenticateScreen, subscribeScreenState } from '../../realtime/screenState'
@@ -12,6 +12,7 @@ import { joinPresence } from '../../realtime/presence'
 import { initialScreenState } from '../../shared/stateMachine'
 import type { ScreenState } from '../../shared/types'
 import { SponsorBanner } from './components/SponsorBanner'
+import { CardPositionProvider } from './components/MovableCard'
 import { AttenteMode } from './modes/AttenteMode'
 import { IntroMode } from './modes/IntroMode'
 import { DynamiqueMode } from './modes/DynamiqueMode'
@@ -26,6 +27,8 @@ export default function ScreenRoute() {
   const [data, setData] = useState<EventData | null>(null)
   const [denied, setDenied] = useState(false)
   const [state, setState] = useState<ScreenState>(initialScreenState)
+  // Référence scène pour positionner les cartes (mesure unités 1920×1080).
+  const stageRef = useRef<HTMLDivElement>(null)
 
   // Association EP ↔ événement par token d'URL (PLAN.md §4) + chargement
   // unique des données statiques (speakers, sponsors, contenus, définitions).
@@ -83,26 +86,53 @@ export default function ScreenRoute() {
     return <div className="screen-surface stage-atmosphere" />
   }
 
-  return (
-    <div className="screen-surface stage-atmosphere">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={state.mode}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.45, ease: 'easeInOut' }}
-          className="absolute inset-0"
-        >
-          {state.mode === 'attente' && <AttenteMode data={data} />}
-          {state.mode === 'intro' && <IntroMode data={data} state={state} />}
-          {state.mode === 'dynamique' && <DynamiqueMode data={data} state={state} />}
-          {state.mode === 'outro' && <OutroMode data={data} />}
-        </motion.div>
-      </AnimatePresence>
+  // Branding : on surcharge les variables CSS du thème (fond/texte/accent) au
+  // niveau de la surface — toute la sous-arborescence en hérite via var(). L'image
+  // se superpose à la couleur de fond, sous l'atmosphère et le contenu.
+  const b = data.branding
+  const brandStyle = b
+    ? ({
+        '--color-ink': b.bgColor,
+        '--color-paper': b.textColor,
+        // Tout le texte de l'EP suit le branding, y compris les petits libellés
+        // (micro-labels, légendes des cartes) : on aligne la variante « dim » sur
+        // la couleur de texte pleine. Seul l'accent garde sa couleur propre.
+        '--color-paper-dim': b.textColor,
+        '--color-accent': b.accentColor,
+        backgroundColor: b.bgColor,
+        ...(b.bgImageUrl && {
+          backgroundImage: `url(${b.bgImageUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }),
+      } as CSSProperties)
+    : undefined
 
-      {/* Bandeau sponsors : présent sur les 4 modes, au-dessus des transitions */}
-      <SponsorBanner sponsors={data.sponsors} scrollSpeed={data.event.sponsorScrollSpeed} />
+  return (
+    <div ref={stageRef} className="screen-surface stage-atmosphere flex flex-col" style={brandStyle}>
+      <CardPositionProvider value={{ positions: state.cardPositions, stageRef }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={state.mode}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: 'easeInOut' }}
+            className="min-h-0 flex-1"
+          >
+            {state.mode === 'attente' && <AttenteMode data={data} />}
+            {state.mode === 'intro' && <IntroMode data={data} state={state} />}
+            {state.mode === 'dynamique' && <DynamiqueMode data={data} state={state} />}
+            {state.mode === 'outro' && <OutroMode data={data} />}
+          </motion.div>
+        </AnimatePresence>
+      </CardPositionProvider>
+
+      {/* Bandeau sponsors : masqué en mode dynamique (demande régie) et en
+          outro (sponsors affichés dans une card dédiée). */}
+      {state.mode !== 'dynamique' && state.mode !== 'outro' && (
+        <SponsorBanner sponsors={data.sponsors} scrollSpeed={data.event.sponsorScrollSpeed} />
+      )}
     </div>
   )
 }

@@ -21,7 +21,9 @@ export interface SubscribeOptions {
 async function fetchScreenState(eventId: string): Promise<ScreenState | null> {
   const { data, error } = await supabase
     .from('screen_state')
-    .select('mode, intro_slide_index, main_content_id, overlay, speakers_banner_visible, qr_visible')
+    .select(
+      'mode, intro_slide_index, main_content_id, overlay, speakers_banner_visible, qr_visible, timer_started_at, card_positions',
+    )
     .eq('event_id', eventId)
     .maybeSingle()
 
