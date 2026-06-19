@@ -84,6 +84,21 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;
+
+  /* Un ancêtre animé (transform/opacity/will-change de framer) suspend le
+     backdrop-filter le temps de l'anim, puis le flou « pop » d'un coup à la
+     fin. On le fait plutôt monter en douceur : délai = durée du glissement
+     (0.4s), puis rampe blur(0)→blur(16px). `both` garde blur 0 avant le délai. */
+  animation: stage-card-blur-in 0.3s ease-out 0.4s both;
+}
+
+@keyframes stage-card-blur-in {
+  from {
+    backdrop-filter: blur(0) saturate(1.2);
+  }
+  to {
+    backdrop-filter: blur(16px) saturate(1.2);
+  }
 }
 
 /* Filet lumineux supérieur. */

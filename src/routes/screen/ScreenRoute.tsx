@@ -122,8 +122,11 @@ export default function ScreenRoute() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Bandeau sponsors : présent sur les 4 modes, au-dessus des transitions */}
-      <SponsorBanner sponsors={data.sponsors} scrollSpeed={data.event.sponsorScrollSpeed} />
+      {/* Bandeau sponsors : masqué en mode dynamique (demande régie) et en
+          outro (sponsors affichés dans une card dédiée). */}
+      {state.mode !== 'dynamique' && state.mode !== 'outro' && (
+        <SponsorBanner sponsors={data.sponsors} scrollSpeed={data.event.sponsorScrollSpeed} />
+      )}
     </div>
   )
 }

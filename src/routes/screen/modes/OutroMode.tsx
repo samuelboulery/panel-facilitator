@@ -14,16 +14,19 @@ export function OutroMode({ data }: { data: EventData }) {
       </div>
 
       {sponsors.length > 0 && (
-        <div className="flex max-w-[1400px] flex-wrap items-center justify-center gap-x-20 gap-y-10">
-          {sponsors.map((sponsor) => (
-            <img
-              key={sponsor.id}
-              src={sponsor.logoUrl}
-              alt={sponsor.name}
-              className="max-h-16 w-auto opacity-90 brightness-0 invert"
-              draggable={false}
-            />
-          ))}
+        <div className="stage-card max-w-[1400px]">
+          <p className="micro-label mb-8 text-center">Merci à tous nos sponsors</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-20 gap-y-10">
+            {sponsors.map((sponsor) => (
+              <img
+                key={sponsor.id}
+                src={sponsor.logoUrl}
+                alt={sponsor.name}
+                className="max-h-16 w-auto opacity-90 brightness-0 invert"
+                draggable={false}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
