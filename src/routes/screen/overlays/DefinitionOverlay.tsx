@@ -19,7 +19,7 @@ export function DefinitionOverlay({ id }: { id: string }) {
   if (!definition) return null
 
   return (
-    <div className="flex items-center gap-10 rounded-3xl border border-white/10 bg-ink-soft/95 p-10 shadow-2xl backdrop-blur-md">
+    <div className="stage-card flex items-center gap-10">
       <div className="min-w-0 flex-1">
         <p className="micro-label mb-4 text-accent">Définition</p>
         <p className="display-title mb-4 text-5xl">{definition.term}</p>

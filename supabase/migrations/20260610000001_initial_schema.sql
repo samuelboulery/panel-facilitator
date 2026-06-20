@@ -22,7 +22,7 @@ create table events (
   asso_slide_enabled boolean not null default false,
   asso_content jsonb,
   qr_url text,
-  sponsor_scroll_speed int not null default 30,
+  sponsor_scroll_speed int not null default 60,
   pin_hash text not null,
   screen_token text not null unique default encode(extensions.gen_random_bytes(24), 'hex'),
   created_at timestamptz not null default now()

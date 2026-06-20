@@ -17,6 +17,7 @@ const event: EventPublic = {
   assoContent: null,
   qrUrl: null,
   sponsorScrollSpeed: 30,
+  brandingProfileId: null,
 }
 
 const speaker = (id: string, opts: Partial<Speaker> = {}): Speaker => ({

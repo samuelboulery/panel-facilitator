@@ -1,51 +1,59 @@
 // Mode DYNAMIQUE (PRD 5.4) — cœur de la table ronde.
-// Contenu principal (embed whitelisté / image / vidéo) sous les overlays.
-// Sans contenu sélectionné : scène calme (titre en filigrane) — jamais d'écran
-// d'erreur ni de placeholder générique devant l'audience.
+// Panneaux positionnés en absolu sur la scène 1920×1080 : QR ancré en haut à
+// droite, contenu principal plein cadre, et un seul groupe en flux — le titre
+// + les éléments dynamiques (overlays) qui apparaissent — ancré en bas.
 import type { EventData } from '../../../realtime/eventData'
-import type { ScreenState } from '../../../shared/types'
+import type { Content, EventPublic, ScreenState } from '../../../shared/types'
 import { toEmbedUrl } from '../../../shared/embed'
 import { GSlidesDeck } from './GSlidesDeck'
-import { SpeakersBanner } from '../components/SpeakersBanner'
 import { QrBadge } from '../components/QrBadge'
 import { OverlayHost } from '../overlays/OverlayHost'
+import { MovableCard } from '../components/MovableCard'
 
-function MainContent({ data, state }: { data: EventData; state: ScreenState }) {
-  const content = state.mainContentId
-    ? data.contents.find((c) => c.id === state.mainContentId)
-    : null
+function formatEventDate(iso: string | null): string | null {
+  if (!iso) return null
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+}
 
-  if (!content) {
-    // Scène au repos : titre discret, l'atmosphère fait le travail.
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="display-title max-w-[1100px] text-center text-6xl text-white/12">
-          {data.event.title}
-        </p>
-      </div>
-    )
-  }
+// Scène au repos : carte titre en verre dépoli (maquette 250:1090),
+// placée en bas de la colonne par le layout flex.
+function RestingScene({ event }: { event: EventPublic }) {
+  const date = formatEventDate(event.eventDate)
+  const lead = event.subtitle ?? event.edition
+  return (
+    <MovableCard slideKey="dynamique-resting" className="stage-card flex w-[820px] max-w-[58%] flex-col gap-5">
+      {(lead || date) && (
+        <div className="flex items-center gap-5 text-3xl text-paper">
+          {lead && <span>{lead}</span>}
+          {lead && date && <span className="text-accent">•</span>}
+          {date && <span>{date}</span>}
+        </div>
+      )}
+      <p className="display-title text-7xl text-paper">{event.title}</p>
+    </MovableCard>
+  )
+}
 
+function MainContent({ content, step }: { content: Content; step: number }) {
   const url = toEmbedUrl(content.kind, content.url)
-  if (!url) {
-    // URL invalide : fallback silencieux (l'alerte vit dans l'IR, pas ici).
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="display-title text-6xl text-white/12">{data.event.title}</p>
-      </div>
-    )
-  }
+  if (!url) return null
 
   switch (content.kind) {
     case 'embed_gslides':
-      // Deck navigable : la slide interne suit state.contentStep (cross-fade).
+      // Deck navigable : la slide interne suit contentStep (cross-fade).
       // key=content.id : changer de deck remonte le composant (sinon l'ancien
       // iframe resterait, step 0 == front.step 0 ne déclenchant aucun reload).
       return (
         <GSlidesDeck
           key={content.id}
           url={content.url}
-          step={state.contentStep}
+          step={step}
           label={content.label}
         />
       )
@@ -78,20 +86,33 @@ interface DynamiqueModeProps {
 }
 
 export function DynamiqueMode({ data, state }: DynamiqueModeProps) {
-  const bannerVisible = state.speakersBannerVisible
+  const content = state.mainContentId
+    ? (data.contents.find((c) => c.id === state.mainContentId) ?? null)
+    : null
+  const url = content ? toEmbedUrl(content.kind, content.url) : null
+  // Scène d'affiche tant qu'aucun contenu principal valide n'est projeté.
+  const resting = !content || !url
+
   return (
     <div className="relative z-2 h-full">
-      {/* Zone contenu : sous le bandeau speakers (80px) et au-dessus des sponsors (64px) */}
-      <div
-        className="absolute inset-x-0 bottom-16 transition-[top] duration-300"
-        style={{ top: bannerVisible ? 80 : 0 }}
-      >
-        <MainContent data={data} state={state} />
-      </div>
+      {/* Contenu principal plein cadre — ancré en absolu, sous les panneaux */}
+      {!resting && (
+        <div className="absolute inset-16">
+          <MainContent content={content} step={state.contentStep} />
+        </div>
+      )}
 
-      <SpeakersBanner speakers={data.speakers} visible={bannerVisible} />
-      <QrBadge url={data.event.qrUrl} visible={state.qrVisible} />
-      <OverlayHost overlay={state.overlay} />
+      {/* QR : ancré en haut à droite, repositionnable */}
+      <MovableCard slideKey="dynamique-qr" className="absolute right-16 top-16">
+        <QrBadge url={data.event.qrUrl} visible={state.qrVisible} />
+      </MovableCard>
+
+      {/* Groupe dynamique : titre + éléments dynamiques (overlays) qui
+          apparaissent — seul ensemble qui reste en flux. Ancré en bas. */}
+      <div className="absolute inset-x-16 bottom-16 flex flex-col gap-8">
+        <OverlayHost overlay={state.overlay} position={resting ? 'top' : 'bottom'} />
+        {resting && <RestingScene event={data.event} />}
+      </div>
     </div>
   )
 }

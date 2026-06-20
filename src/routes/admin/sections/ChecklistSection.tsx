@@ -41,6 +41,7 @@ function toEventPublic(e: AdminEvent): EventPublic {
     assoContent: e.asso_content,
     qrUrl: e.qr_url,
     sponsorScrollSpeed: e.sponsor_scroll_speed,
+    brandingProfileId: e.branding_profile_id,
   }
 }
 

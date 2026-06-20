@@ -22,6 +22,15 @@ export const screenStateRowSchema = z
     speakers_banner_visible: z.boolean(),
     qr_visible: z.boolean(),
     timer_started_at: z.string().nullable().default(null),
+    card_positions: z
+      .record(
+        z.object({
+          x: z.number(),
+          y: z.number(),
+          edge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
+        }),
+      )
+      .default({}),
   })
   .transform(
     (row): ScreenState => ({
@@ -33,6 +42,7 @@ export const screenStateRowSchema = z
       speakersBannerVisible: row.speakers_banner_visible,
       qrVisible: row.qr_visible,
       timerStartedAt: row.timer_started_at,
+      cardPositions: row.card_positions,
     }),
   )
 
@@ -50,6 +60,7 @@ export const eventPublicRowSchema = z
     asso_content: z.unknown().nullable(),
     qr_url: z.string().nullable(),
     sponsor_scroll_speed: z.number(),
+    branding_profile_id: z.string().uuid().nullable().default(null),
   })
   .transform((r) => ({
     id: r.id,
@@ -64,6 +75,7 @@ export const eventPublicRowSchema = z
     assoContent: r.asso_content ?? null,
     qrUrl: r.qr_url,
     sponsorScrollSpeed: r.sponsor_scroll_speed,
+    brandingProfileId: r.branding_profile_id,
   }))
 
 export const speakerRowSchema = z
@@ -122,6 +134,20 @@ export const contentRowSchema = z
     url: r.url,
     label: r.label,
     sortOrder: r.sort_order,
+  }))
+
+export const brandingRowSchema = z
+  .object({
+    bg_color: z.string(),
+    text_color: z.string(),
+    accent_color: z.string(),
+    bg_image_url: z.string().nullable().default(null),
+  })
+  .transform((r) => ({
+    bgColor: r.bg_color,
+    textColor: r.text_color,
+    accentColor: r.accent_color,
+    bgImageUrl: r.bg_image_url,
   }))
 
 export const definitionRowSchema = z

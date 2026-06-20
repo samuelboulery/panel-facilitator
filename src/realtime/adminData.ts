@@ -17,6 +17,7 @@ export interface AdminEvent {
   asso_content: { name?: string; description?: string } | null
   qr_url: string | null
   sponsor_scroll_speed: number
+  branding_profile_id: string | null
   screen_token: string
 }
 
@@ -25,7 +26,7 @@ export async function fetchAdminEvent(): Promise<AdminEvent | null> {
   const { data, error } = await supabase
     .from('events')
     .select(
-      'id, slug, title, subtitle, edition, event_date, start_at, closing_message, asso_slide_enabled, asso_content, qr_url, sponsor_scroll_speed, screen_token',
+      'id, slug, title, subtitle, edition, event_date, start_at, closing_message, asso_slide_enabled, asso_content, qr_url, sponsor_scroll_speed, branding_profile_id, screen_token',
     )
     .order('created_at', { ascending: true })
     .limit(1)
@@ -105,6 +106,50 @@ export async function importPersonToEvent(person: Person, eventId: string): Prom
     is_host: false,
     sort_order: nextOrder,
   })
+}
+
+// ── Profils de branding (palette + image de fond, nommés, par événement) ──
+// L'EP applique le profil actif de l'événement (events.branding_profile_id ;
+// à défaut, le premier créé — cf. fetchBranding, eventData).
+
+export interface BrandingProfile {
+  id: string
+  event_id: string
+  name: string
+  bg_color: string
+  text_color: string
+  accent_color: string
+  bg_image_url: string | null
+}
+
+export async function listBrandingProfiles(eventId: string): Promise<BrandingProfile[]> {
+  const { data, error } = await supabase
+    .from('branding_profiles')
+    .select('id, event_id, name, bg_color, text_color, accent_color, bg_image_url')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true })
+  if (error || !data) return []
+  return data as BrandingProfile[]
+}
+
+export async function createBrandingProfile(
+  values: Omit<BrandingProfile, 'id'>,
+): Promise<void> {
+  const { error } = await supabase.from('branding_profiles').insert(values)
+  if (error) throw new Error(`Ajout refusé : ${error.message}`)
+}
+
+export async function updateBrandingProfile(
+  id: string,
+  values: Partial<Omit<BrandingProfile, 'id' | 'event_id'>>,
+): Promise<void> {
+  const { error } = await supabase.from('branding_profiles').update(values).eq('id', id)
+  if (error) throw new Error(`Modification refusée : ${error.message}`)
+}
+
+export async function deleteBrandingProfile(id: string): Promise<void> {
+  const { error } = await supabase.from('branding_profiles').delete().eq('id', id)
+  if (error) throw new Error(`Suppression refusée : ${error.message}`)
 }
 
 // ── CRUD générique des listes rattachées à l'événement ──
@@ -231,7 +276,7 @@ async function toWebp(file: File, maxDim: number): Promise<Blob> {
  */
 export async function uploadImage(
   file: File,
-  folder: 'speakers' | 'sponsors' | 'definitions',
+  folder: 'speakers' | 'sponsors' | 'definitions' | 'branding',
   maxDim = 800,
 ): Promise<string> {
   if (!file.type.startsWith('image/')) {

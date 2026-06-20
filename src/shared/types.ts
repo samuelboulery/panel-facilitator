@@ -24,6 +24,21 @@ export interface ScreenState {
   qrVisible: boolean
   /** Timer de durée manuel de l'IR (null = arrêté). N'apparaît pas sur l'EP. */
   timerStartedAt: string | null
+  /** Positions personnalisées des cartes de scène : slideKey → position en unités 1920×1080. */
+  cardPositions: Record<string, CardPosition>
+}
+
+/** Bordure de référence d'une carte : l'axe ancré reste collé à ce bord lors des
+ *  variations de taille (timer, rotation speakers). Défaut historique = 'top'. */
+export type CardEdge = 'top' | 'bottom' | 'left' | 'right'
+
+/** Position d'une carte de scène. `x`/`y` = coordonnées du coin (unités scène),
+ *  mais l'axe désigné par `edge` est mesuré DEPUIS ce bord (ex. edge='bottom' →
+ *  y = distance du bas). Voir MovableCard pour la reconstruction du coin. */
+export interface CardPosition {
+  x: number
+  y: number
+  edge?: CardEdge
 }
 
 export type PollKind = 'poll' | 'versus'
@@ -45,6 +60,14 @@ export interface EventPublic {
   assoContent: unknown
   qrUrl: string | null
   sponsorScrollSpeed: number
+  brandingProfileId: string | null
+}
+
+export interface Branding {
+  bgColor: string
+  textColor: string
+  accentColor: string
+  bgImageUrl: string | null
 }
 
 export interface Speaker {

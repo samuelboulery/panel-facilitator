@@ -17,6 +17,7 @@ const event: EventPublic = {
   assoContent: null,
   qrUrl: 'https://example.com/q/demo',
   sponsorScrollSpeed: 30,
+  brandingProfileId: null,
 }
 
 const host: Speaker = {

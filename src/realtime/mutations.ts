@@ -8,7 +8,7 @@
 // et se re-synchronise au prochain événement realtime ; rpcError() a déjà loggé le
 // détail en console. Pas de retry (D : simplicité > robustesse réseau V1).
 import { supabase } from './client'
-import type { Overlay, Mode, PollKind } from '../shared/types'
+import type { Overlay, Mode, PollKind, CardPosition } from '../shared/types'
 
 export interface ControlSession {
   slug: string
@@ -32,6 +32,7 @@ type ScreenStatePatch = Partial<{
   speakers_banner_visible: boolean
   qr_visible: boolean
   timer_started_at: string | null
+  card_positions: Record<string, CardPosition>
 }>
 
 /** Log détaillé côté console, message générique côté UI (pas de fuite d'erreur DB). */
@@ -83,6 +84,12 @@ export const setQrVisible = (s: ControlSession, visible: boolean) =>
 /** Timer de durée manuel (barre d'état IR) : ISO pour démarrer, null pour arrêter. */
 export const setTimerStartedAt = (s: ControlSession, startedAt: string | null) =>
   patchScreenState(s, { timer_started_at: startedAt })
+
+/** Positions des cartes de scène (drag & drop) — map slideKey → offset, fusionnée côté client. */
+export const setCardPositions = (
+  s: ControlSession,
+  positions: Record<string, CardPosition>,
+) => patchScreenState(s, { card_positions: positions })
 
 export async function setPollStatus(
   s: ControlSession,
