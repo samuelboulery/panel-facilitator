@@ -162,6 +162,7 @@ function ControlShell({ session }: { session: ControlSession }) {
             data={data}
             control={control}
             session={session}
+            active={viewIndex === 0}
             editLayout={editLayout}
             onToggleEditLayout={() => setEditLayout((v) => !v)}
           />,

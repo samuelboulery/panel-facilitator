@@ -24,6 +24,8 @@ export interface ControlState {
   /** Entre en mode intro directement sur une slide (un seul RPC, pas de course). */
   goToIntroSlide: (index: number) => void
   setMainContent: (contentId: string | null) => void
+  /** Navigue dans la slide interne du contenu dynamique (deck Google Slides). */
+  setContentStep: (step: number) => void
   showOverlay: (overlay: Overlay) => void
   closeOverlay: () => void
   toggleSpeakersBanner: () => void
@@ -121,6 +123,13 @@ export function useControlState(session: ControlSession): ControlState {
       (contentId: string | null) =>
         dispatch({ type: 'SET_MAIN_CONTENT', contentId }, () =>
           mutations.setMainContent(session, contentId),
+        ),
+      [dispatch, session],
+    ),
+    setContentStep: useCallback(
+      (step: number) =>
+        dispatch({ type: 'SET_CONTENT_STEP', step }, () =>
+          mutations.setContentStep(session, step),
         ),
       [dispatch, session],
     ),

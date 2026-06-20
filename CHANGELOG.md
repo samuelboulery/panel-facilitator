@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## Contenu dynamique — site, flèches, deck navigable (18 juin 2026)
+
+### Livré (3 retours utilisateur)
+
+- **Type de contenu « Site web »** (`embed_site`) : iframe vers toute URL https valide, en plus de Google Slides / Figma / image / vidéo. La whitelist de domaines (`src/shared/embed.ts`) ne s'applique qu'aux embeds Slides/Figma ; le site est saisi par l'organisateur au backoffice (frontière de confiance = admin, jamais public). Sandbox `allow-scripts allow-same-origin allow-presentation`.
+- **Navigation clavier ←/→** du carrousel régie (vue Slides) : pilote l'EP comme les boutons/swipe existants. Gaté sur la vue active, n'intercepte pas la frappe dans un champ de saisie — cible télécommande de présentation / clavier BT iPad.
+- **Deck Google Slides navigable depuis la régie** : nouvelle colonne `screen_state.content_step` (la régie ne peut pas piloter un iframe cross-origin en JS → l'index passe par l'état partagé, l'EP le traduit en URL `/embed?slide=N`). Rendu sans flash par cross-fade 2 iframes (`GSlidesDeck.tsx`). Boutons ◀/▶ sur la carte du deck dans l'IR. Changer de contenu réinitialise l'index à 0.
+
+### Limites connues
+
+- Le contrôle interne ne vaut que pour Google Slides (positionnable par URL). Figma / site quelconque ne sont pas pilotables à distance (cross-origin). Le saut à la slide N dépend du paramètre d'URL honoré par le lecteur `/embed` Google — encodé en un seul endroit (`embed.ts`) pour ajustement.
+
+### Setup requis
+
+- `supabase db reset` (migrations `20260618000003_content_site.sql`, `20260618000004_content_step.sql`).
+
 ## Repasse IR (11 juin 2026)
 
 ### Livré (9 retours utilisateur)

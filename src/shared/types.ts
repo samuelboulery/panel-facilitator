@@ -17,6 +17,8 @@ export interface ScreenState {
   mode: Mode
   introSlideIndex: number
   mainContentId: string | null
+  /** Slide interne du contenu dynamique (deck Google Slides). 0 = première. */
+  contentStep: number
   overlay: Overlay | null
   speakersBannerVisible: boolean
   qrVisible: boolean
@@ -43,7 +45,7 @@ export type PollKind = 'poll' | 'versus'
 export type PollStatus = 'draft' | 'live' | 'closed' | 'archived'
 export type QuestionSource = 'prepared' | 'audience'
 export type QuestionStatus = 'pending' | 'displayed' | 'done' | 'archived'
-export type ContentKind = 'embed_gslides' | 'embed_figma' | 'image' | 'video'
+export type ContentKind = 'embed_gslides' | 'embed_figma' | 'embed_site' | 'image' | 'video'
 
 export interface EventPublic {
   id: string
