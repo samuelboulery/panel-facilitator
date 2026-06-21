@@ -1,9 +1,12 @@
 // Mode DYNAMIQUE (PRD 5.4) — cœur de la table ronde.
 // Panneaux positionnés en absolu sur la scène 1920×1080 : QR ancré en haut à
-// droite, contenu principal plein cadre, et un seul groupe en flux — le titre
-// + les éléments dynamiques (overlays) qui apparaissent — ancré en bas.
+// droite, contenu principal plein cadre. Scène de repos (aucun contenu projeté) :
+// titre + overlay forment UN seul groupe repositionnable (une ancre commune). Le
+// sens d'empilement suit l'ancre : ancré bas → overlay sous le titre (titre poussé
+// vers le haut) ; ancré haut/centre → overlay au-dessus (le titre descend).
+import { motion } from 'framer-motion'
 import type { EventData } from '../../../realtime/eventData'
-import type { Content, EventPublic, ScreenState } from '../../../shared/types'
+import type { CardPosition, Content, EventPublic, Overlay, ScreenState } from '../../../shared/types'
 import { toEmbedUrl } from '../../../shared/embed'
 import { QrBadge } from '../components/QrBadge'
 import { OverlayHost } from '../overlays/OverlayHost'
@@ -20,13 +23,19 @@ function formatEventDate(iso: string | null): string | null {
   }).format(date)
 }
 
-// Scène au repos : carte titre en verre dépoli (maquette 250:1090),
-// placée en bas de la colonne par le layout flex.
-function RestingScene({ event }: { event: EventPublic }) {
+// Carte titre en verre dépoli (maquette 250:1090). La largeur et l'ancrage sont
+// portés par le groupe parent (RestingGroup) — ici, juste le contenu.
+// `layout` : anime le glissement du titre quand l'overlay apparaît/disparaît
+// (sinon il se téléporte à sa nouvelle place dans la colonne flex).
+function TitleCard({ event }: { event: EventPublic }) {
   const date = formatEventDate(event.eventDate)
   const lead = event.subtitle ?? event.edition
   return (
-    <MovableCard slideKey="dynamique-resting" className="stage-card flex w-[820px] max-w-[58%] flex-col gap-5">
+    <motion.div
+      layout
+      transition={{ type: 'tween', duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="stage-card flex flex-col gap-5"
+    >
       {(lead || date) && (
         <div className="flex items-center gap-5 text-3xl text-paper">
           {lead && <span>{lead}</span>}
@@ -35,6 +44,42 @@ function RestingScene({ event }: { event: EventPublic }) {
         </div>
       )}
       <p className="display-title text-7xl text-paper">{event.title}</p>
+    </motion.div>
+  )
+}
+
+// Groupe de repos = titre + overlay sous une seule ancre (slideKey commun). L'ordre
+// d'empilement suit le bord d'ancre vertical : ancré bas → titre puis overlay (le
+// titre est poussé vers le haut) ; sinon overlay puis titre (le titre descend).
+// Par défaut (aucune position enregistrée) : ancré en haut à gauche, à côté du QR.
+function RestingGroup({
+  event,
+  overlay,
+  pos,
+}: {
+  event: EventPublic
+  overlay: Overlay | null
+  pos: CardPosition | undefined
+}) {
+  const anchorBottom = pos?.anchorY === 'bottom'
+  const title = <TitleCard event={event} />
+  const ovl = <OverlayHost overlay={overlay} enterFrom={anchorBottom ? 'bottom' : 'top'} />
+  return (
+    <MovableCard
+      slideKey="dynamique-resting"
+      className="absolute left-16 top-16 flex w-[820px] max-w-[58%] flex-col gap-10"
+    >
+      {anchorBottom ? (
+        <>
+          {title}
+          {ovl}
+        </>
+      ) : (
+        <>
+          {ovl}
+          {title}
+        </>
+      )}
     </MovableCard>
   )
 }
@@ -94,12 +139,19 @@ export function DynamiqueMode({ data, state }: DynamiqueModeProps) {
         <QrBadge url={data.event.qrUrl} visible={state.qrVisible} />
       </MovableCard>
 
-      {/* Groupe dynamique : titre + éléments dynamiques (overlays) qui
-          apparaissent — seul ensemble qui reste en flux. Ancré en bas. */}
-      <div className="absolute inset-x-16 bottom-16 flex flex-col gap-8">
-        <OverlayHost overlay={state.overlay} position={resting ? 'top' : 'bottom'} />
-        {resting && <RestingScene event={data.event} />}
-      </div>
+      {/* Repos : titre + overlay groupés sous une ancre commune, repositionnables.
+          Contenu projeté : overlay seul en bandeau bas pleine largeur. */}
+      {resting ? (
+        <RestingGroup
+          event={data.event}
+          overlay={state.overlay}
+          pos={state.cardPositions['dynamique-resting']}
+        />
+      ) : (
+        <div className="absolute inset-x-16 bottom-16">
+          <OverlayHost overlay={state.overlay} enterFrom="top" />
+        </div>
+      )}
     </div>
   )
 }

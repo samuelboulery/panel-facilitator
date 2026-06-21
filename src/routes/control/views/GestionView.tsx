@@ -286,11 +286,6 @@ export function GestionView({
           <SectionCard title="Écran public">
             <div className="flex flex-wrap gap-2">
               <ToggleChip
-                label="Bandeau speakers"
-                on={control.screen.speakersBannerVisible}
-                onToggle={control.toggleSpeakersBanner}
-              />
-              <ToggleChip
                 label="QR code"
                 on={control.screen.qrVisible}
                 onToggle={control.toggleQr}
