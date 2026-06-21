@@ -26,17 +26,22 @@ export interface ScreenState {
   cardPositions: Record<string, CardPosition>
 }
 
-/** Bordure de référence d'une carte : l'axe ancré reste collé à ce bord lors des
- *  variations de taille (timer, rotation speakers). Défaut historique = 'top'. */
-export type CardEdge = 'top' | 'bottom' | 'left' | 'right'
+/** Bords d'ancre d'une carte, un par axe. Chaque axe reste collé à son bord lors
+ *  des variations de taille (timer, rotation speakers) ; sticky = dernière
+ *  extrémité touchée pendant le drag. `center` = axe centré sur la scène (entré
+ *  via double-clic) : reste centré tant qu'aucun bord n'est touché. */
+export type CardAnchorX = 'left' | 'center' | 'right'
+export type CardAnchorY = 'top' | 'center' | 'bottom'
 
-/** Position d'une carte de scène. `x`/`y` = coordonnées du coin (unités scène),
- *  mais l'axe désigné par `edge` est mesuré DEPUIS ce bord (ex. edge='bottom' →
- *  y = distance du bas). Voir MovableCard pour la reconstruction du coin. */
+/** Position d'une carte de scène. `x` = distance au bord horizontal ancré
+ *  (`anchorX`), `y` = distance au bord vertical ancré (`anchorY`). Ex.
+ *  anchorX='right' → x = distance au bord droit. Pour un axe `center`, x/y = 0
+ *  (centré). Voir MovableCard. */
 export interface CardPosition {
   x: number
   y: number
-  edge?: CardEdge
+  anchorX: CardAnchorX
+  anchorY: CardAnchorY
 }
 
 export type PollKind = 'poll' | 'versus'

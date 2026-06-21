@@ -1,10 +1,10 @@
 // Carte de scène repositionnable (drag & drop IR → EP).
-// Position stockée = coin de la carte en unités scène (1920×1080), MAIS l'axe
-// désigné par `edge` est mesuré depuis ce bord (edge='bottom' → y = distance du
-// bas, etc.). L'axe ancré reste collé à son bord lors des variations de taille
-// (timer, rotation speakers) ; l'autre axe garde le coin haut/gauche. `edge` est
-// la dernière bordure « plaquée » pendant le drag (sticky tant qu'aucune nouvelle
-// n'est touchée) ; côté IR un liseré de 2px marque ce bord de référence.
+// Position stockée = ancrée par coin : `anchorX` (left/right) + `anchorY`
+// (top/bottom) désignent les deux bords d'ancre ; `x`/`y` sont les distances à ces
+// bords (anchorX='right' → x = distance au bord droit). Chaque axe reste collé à
+// son bord lors des variations de taille (timer, rotation speakers). Les ancres
+// suivent la dernière extrémité plaquée pendant le drag, par axe (sticky tant
+// qu'aucune nouvelle n'est touchée) ; côté IR un liseré de 2px marque les 2 bords.
 // À chaque rendu / changement de taille, on reconstruit le coin haut-gauche puis
 // le `translate` qui l'y pose : robuste aux centrages (-translate-y-1/2, flex
 // justify-center) et aux variations de taille.
@@ -20,13 +20,14 @@ import {
   useState,
   type CSSProperties,
   type ElementType,
+  type MouseEvent,
   type PointerEvent,
   type ReactNode,
   type Ref,
   type RefObject,
 } from 'react'
 
-import type { CardEdge, CardPosition as CardPos } from '../../../shared/types'
+import type { CardAnchorX, CardAnchorY, CardPosition as CardPos } from '../../../shared/types'
 
 interface CardPositionCtx {
   positions: Record<string, CardPos>
@@ -52,19 +53,42 @@ export function CardPositionProvider({
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
-const STAGE_W = 1920
-const STAGE_H = 1080
 const MARGIN = 64 // marge de sécurité sur le bord (unités scène)
 const TOUCH = 1 // tolérance (unités scène) : carte « plaquée » contre un bord
 
 const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
 
-// Liseré de référence (côté IR) : 2px inset sur le bord ancré.
-const EDGE_SHADOW: Record<CardEdge, string> = {
-  top: 'inset 0 2px 0 0 var(--color-accent, #38bdf8)',
-  bottom: 'inset 0 -2px 0 0 var(--color-accent, #38bdf8)',
-  left: 'inset 2px 0 0 0 var(--color-accent, #38bdf8)',
-  right: 'inset -2px 0 0 0 var(--color-accent, #38bdf8)',
+// Liseré de référence (côté IR) : 8px outset sur chaque bord ancré.
+// Axe `center` : pas de bar outset → trait médian rendu en overlay (cf. render).
+const SHADOW_X: Record<'left' | 'right', string> = {
+  left: '-8px 0 0 0 var(--color-accent, #38bdf8)',
+  right: '8px 0 0 0 var(--color-accent, #38bdf8)',
+}
+const SHADOW_Y: Record<'top' | 'bottom', string> = {
+  top: '0 -8px 0 0 var(--color-accent, #38bdf8)',
+  bottom: '0 8px 0 0 var(--color-accent, #38bdf8)',
+}
+
+// Trait médian (overlay) marquant un axe centré, côté IR.
+const CENTER_LINE_X: CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  bottom: 0,
+  left: '50%',
+  width: 2,
+  marginLeft: -1,
+  background: 'var(--color-accent, #38bdf8)',
+  pointerEvents: 'none',
+}
+const CENTER_LINE_Y: CSSProperties = {
+  position: 'absolute',
+  left: 0,
+  right: 0,
+  top: '50%',
+  height: 2,
+  marginTop: -1,
+  background: 'var(--color-accent, #38bdf8)',
+  pointerEvents: 'none',
 }
 
 interface MovableCardProps {
@@ -87,9 +111,11 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
   translateRef.current = translate
   const dragging = useRef(false)
 
-  // Mesure : position « naturelle » (translate=0) du coin haut-gauche, taille et
-  // scale, le tout en unités scène. scale = largeur rendue / largeur layout :
-  // côté aperçu IR la scène est transformée (scale<1), côté EP non (scale=1).
+  // Mesure : position « naturelle » (translate=0) du coin haut-gauche, taille,
+  // scale et dimensions de la scène, le tout en unités scène. scale = largeur
+  // rendue / largeur layout : côté aperçu IR la scène est transformée (scale<1),
+  // côté EP non (scale=1). stageW/stageH = taille réelle (layout) de la scène :
+  // l'EP est fluide (100vw/100vh) donc ≠ 1920×1080 → ne JAMAIS coder en dur.
   const measure = useCallback(() => {
     const stage = stageRef?.current
     const el = elRef.current
@@ -107,6 +133,8 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
       natY: (c.top - s.top) / scale - t.y,
       w: c.width / scale,
       h: c.height / scale,
+      stageW: stage.offsetWidth,
+      stageH: stage.offsetHeight,
       scale,
     }
   }, [stageRef])
@@ -118,12 +146,21 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
     if (!pos || dragging.current) return
     const m = measure()
     if (!m) return
-    // Coin haut-gauche cible : pour l'axe ancré à un bord « loin » (bottom/right),
+    // Coin haut-gauche cible : pour un axe ancré à un bord « loin » (bottom/right),
     // on dérive le coin depuis la taille courante → ce bord reste fixe quand la
-    // carte change de taille. L'autre axe garde la coordonnée stockée telle quelle.
-    const edge = pos.edge ?? 'top'
-    const cornerX = edge === 'right' ? STAGE_W - pos.x - m.w : pos.x
-    const cornerY = edge === 'bottom' ? STAGE_H - pos.y - m.h : pos.y
+    // carte change de taille. Chaque axe est indépendant.
+    const cornerX =
+      pos.anchorX === 'right'
+        ? m.stageW - pos.x - m.w
+        : pos.anchorX === 'center'
+          ? (m.stageW - m.w) / 2 + pos.x
+          : pos.x
+    const cornerY =
+      pos.anchorY === 'bottom'
+        ? m.stageH - pos.y - m.h
+        : pos.anchorY === 'center'
+          ? (m.stageH - m.h) / 2 + pos.y
+          : pos.y
     const next = { x: cornerX - m.natX, y: cornerY - m.natY }
     setTranslate((prev) =>
       Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5 ? prev : next,
@@ -154,6 +191,8 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
     natY: number
     w: number
     h: number
+    stageW: number
+    stageH: number
     tx: number
     ty: number
     minX: number
@@ -161,9 +200,10 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
     minY: number
     maxY: number
   } | null>(null)
-  // Bordure de référence courante (sticky) : suit la dernière bordure plaquée
-  // pendant le drag ; conserve celle déjà stockée si aucune n'est touchée.
-  const dragEdge = useRef<CardEdge>('top')
+  // Bords d'ancre courants (sticky, un par axe) : suivent la dernière extrémité
+  // plaquée pendant le drag ; conservent celle déjà stockée si aucune touchée.
+  const dragAnchorX = useRef<CardAnchorX>('left')
+  const dragAnchorY = useRef<CardAnchorY>('top')
 
   const draggable = Boolean(onDrag)
 
@@ -172,7 +212,8 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
     const m = measure()
     if (!m) return
     dragging.current = true
-    dragEdge.current = storedRef.current?.edge ?? 'top'
+    dragAnchorX.current = storedRef.current?.anchorX ?? 'left'
+    dragAnchorY.current = storedRef.current?.anchorY ?? 'top'
     const t = translateRef.current
     // Bornes de translate gardant le coin dans [MARGIN, scène - MARGIN - taille].
     drag.current = {
@@ -183,12 +224,14 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
       natY: m.natY,
       w: m.w,
       h: m.h,
+      stageW: m.stageW,
+      stageH: m.stageH,
       tx: t.x,
       ty: t.y,
       minX: MARGIN - m.natX,
-      maxX: STAGE_W - MARGIN - m.w - m.natX,
+      maxX: m.stageW - MARGIN - m.w - m.natX,
       minY: MARGIN - m.natY,
-      maxY: STAGE_H - MARGIN - m.h - m.natY,
+      maxY: m.stageH - MARGIN - m.h - m.natY,
     }
     e.currentTarget.setPointerCapture(e.pointerId)
     e.stopPropagation()
@@ -199,23 +242,18 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
     if (!d) return
     const tx = clamp(d.tx + (e.clientX - d.px) / d.scale, Math.min(d.minX, d.maxX), Math.max(d.minX, d.maxX))
     const ty = clamp(d.ty + (e.clientY - d.py) / d.scale, Math.min(d.minY, d.maxY), Math.max(d.minY, d.maxY))
-    // Coin haut-gauche courant → écarts aux 4 bords. Une carte « plaquée »
-    // (gap ≤ TOUCH) redéfinit la bordure de référence ; arbitrage par l'axe du
-    // déplacement dominant si deux bords sont touchés simultanément (coin).
+    // Coin haut-gauche courant → écarts aux 4 bords. Chaque axe est indépendant :
+    // une carte « plaquée » (gap ≤ TOUCH) redéfinit son ancre sur cet axe.
     const cornerX = d.natX + tx
     const cornerY = d.natY + ty
     const touchLeft = cornerX - MARGIN <= TOUCH
-    const touchRight = STAGE_W - MARGIN - (cornerX + d.w) <= TOUCH
+    const touchRight = d.stageW - MARGIN - (cornerX + d.w) <= TOUCH
     const touchTop = cornerY - MARGIN <= TOUCH
-    const touchBottom = STAGE_H - MARGIN - (cornerY + d.h) <= TOUCH
-    const horiz = touchLeft || touchRight
-    const vert = touchTop || touchBottom
-    if (horiz || vert) {
-      const adx = Math.abs(e.clientX - d.px)
-      const ady = Math.abs(e.clientY - d.py)
-      if (horiz && (!vert || adx >= ady)) dragEdge.current = touchLeft ? 'left' : 'right'
-      else dragEdge.current = touchTop ? 'top' : 'bottom'
-    }
+    const touchBottom = d.stageH - MARGIN - (cornerY + d.h) <= TOUCH
+    if (touchLeft) dragAnchorX.current = 'left'
+    else if (touchRight) dragAnchorX.current = 'right'
+    if (touchTop) dragAnchorY.current = 'top'
+    else if (touchBottom) dragAnchorY.current = 'bottom'
     setTranslate({ x: tx, y: ty })
   }
 
@@ -226,27 +264,61 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
     dragging.current = false
     e.currentTarget.releasePointerCapture(e.pointerId)
     const t = translateRef.current
-    const edge = dragEdge.current
+    const anchorX = dragAnchorX.current
+    const anchorY = dragAnchorY.current
     // Coin haut-gauche absolu (unités scène) = naturel + translate. On stocke
-    // l'axe ancré en distance au bord de référence (bottom/right), l'autre tel quel.
+    // chaque axe en distance à son bord d'ancre (right → depuis la droite, etc.).
     const cornerX = d.natX + t.x
     const cornerY = d.natY + t.y
+    // Axe centré non plaqué : snap retour au centre immédiat. Le round-trip via
+    // `stored` ne le fait pas (x reste 0 → dep useLayoutEffect inchangée), donc on
+    // repose le translate ici. Les axes ancrés-bord gardent le translate du drag.
+    if (anchorX === 'center' || anchorY === 'center') {
+      setTranslate({
+        x: anchorX === 'center' ? (d.stageW - d.w) / 2 - d.natX : t.x,
+        y: anchorY === 'center' ? (d.stageH - d.h) / 2 - d.natY : t.y,
+      })
+    }
     if (onDrag) {
       onDrag(slideKey, {
-        edge,
-        x: edge === 'right' ? STAGE_W - (cornerX + d.w) : cornerX,
-        y: edge === 'bottom' ? STAGE_H - (cornerY + d.h) : cornerY,
+        anchorX,
+        anchorY,
+        x: anchorX === 'right' ? d.stageW - (cornerX + d.w) : anchorX === 'center' ? 0 : cornerX,
+        y: anchorY === 'bottom' ? d.stageH - (cornerY + d.h) : anchorY === 'center' ? 0 : cornerY,
       })
     }
   }
+
+  // Double-clic : recentre la carte sur les 2 axes (ancre center). Reste centrée
+  // tant qu'aucun bord n'est touché lors d'un drag ultérieur (sticky par axe).
+  const handleDoubleClick = (e: MouseEvent) => {
+    if (!onDrag) return
+    e.stopPropagation()
+    onDrag(slideKey, { anchorX: 'center', anchorY: 'center', x: 0, y: 0 })
+  }
+
+  // Liseré : bar outset par bord ancré (pas pour un axe centré → trait médian).
+  const centerX = draggable && stored?.anchorX === 'center'
+  const centerY = draggable && stored?.anchorY === 'center'
+  const shadows: string[] = []
+  if (draggable && stored) {
+    if (stored.anchorX !== 'center') shadows.push(SHADOW_X[stored.anchorX])
+    if (stored.anchorY !== 'center') shadows.push(SHADOW_Y[stored.anchorY])
+  }
+  // ponytail: l'overlay du trait médian a besoin d'un containing block positionné.
+  // stage-card l'est (CSS), les wrappers `absolute` aussi ; on ne force `relative`
+  // que si la className ne pose pas déjà un positionnement, pour ne rien écraser.
+  const needsRelative =
+    (centerX || centerY) && !/(^|\s)(absolute|fixed)(\s|$)/.test(className ?? '')
 
   const style: CSSProperties = {
     translate: `${translate.x}px ${translate.y}px`,
     // L'aperçu IR est pointer-events:none ; on réactive le pointeur sur les
     // cartes draggables uniquement, et neutralise le scroll tactile.
-    ...(draggable && { pointerEvents: 'auto', touchAction: 'none', cursor: 'grab' }),
-    // Liseré indiquant le bord de référence — IR uniquement (jamais sur l'EP).
-    ...(draggable && stored?.edge && { boxShadow: EDGE_SHADOW[stored.edge] }),
+    ...(draggable && { pointerEvents: 'auto', touchAction: 'none', userSelect: 'none', cursor: 'grab' }),
+    ...(needsRelative && { position: 'relative' }),
+    // Liseré indiquant les bords d'ancre — IR uniquement (jamais sur l'EP).
+    ...(shadows.length > 0 && { boxShadow: shadows.join(', ') }),
   }
 
   return (
@@ -258,9 +330,12 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
         onPointerDown: handleDown,
         onPointerMove: handleMove,
         onPointerUp: handleUp,
+        onDoubleClick: handleDoubleClick,
       })}
     >
       {children}
+      {centerX && <span aria-hidden style={CENTER_LINE_X} />}
+      {centerY && <span aria-hidden style={CENTER_LINE_Y} />}
     </Tag>
   )
 }

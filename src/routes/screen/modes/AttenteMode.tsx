@@ -138,7 +138,10 @@ export function AttenteMode({ data }: { data: EventData }) {
         <Timer startAt={event.startAt} />
       </MovableCard>
 
-      <MovableCard slideKey="attente-speakers" className="absolute right-20 top-1/2 -translate-y-1/2">
+      <MovableCard
+        slideKey="attente-speakers"
+        className="absolute right-20 top-1/2 -translate-y-1/2 rounded-[20px]"
+      >
         <SpeakersCard data={data} />
       </MovableCard>
     </div>
