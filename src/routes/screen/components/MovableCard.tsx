@@ -106,7 +106,8 @@ export function MovableCard({ slideKey, as: Tag = 'div', className, children }: 
 
   const elRef = useRef<HTMLElement>(null)
   // `translate` courant (unités scène) appliqué à la carte — pilote le style.
-  const [translate, setTranslate] = useState<CardPos>({ x: 0, y: 0 })
+  // Simple offset {x,y} (pas une position ancrée) : pas d'anchorX/anchorY.
+  const [translate, setTranslate] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const translateRef = useRef(translate)
   translateRef.current = translate
   const dragging = useRef(false)

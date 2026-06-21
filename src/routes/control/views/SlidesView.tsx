@@ -1,15 +1,16 @@
 // Vue Slides (gauche) — carrousel de présentation (maquette iPad 15) :
 // grande carte-preview de la slide EP courante au centre, adjacentes en peek.
-// Séquence unifiée : Attente → slides intro → contenus dynamiques → Outro.
-// Naviguer (flèches, tap carte adjacente, swipe) pilote directement l'EP via
-// useControlState — toujours validé par la machine à états.
+// Séquence : Attente → slides intro → Dynamique → Outro. Les contenus projetés
+// (embeds/médias) sont pilotés depuis la vue Gestion (card Contenus), plus dans
+// le carrousel. Naviguer (flèches, tap carte adjacente, swipe) pilote directement
+// l'EP via useControlState — toujours validé par la machine à états.
 import { useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { EventData } from '../../../realtime/eventData'
 import type { ControlSession } from '../../../realtime/mutations'
 import { setSpeakerHidden } from '../../../realtime/mutations'
 import { buildIntroSlides, clampIntroIndex, type IntroSlide } from '../../../shared/introSlides'
-import type { Content, ScreenState, CardPosition } from '../../../shared/types'
+import type { ScreenState, CardPosition } from '../../../shared/types'
 import type { ControlState } from '../hooks/useControlState'
 import { StagePreview } from './StagePreview'
 
@@ -17,7 +18,6 @@ type DeckSlide =
   | { kind: 'attente'; key: string; label: string; hint: string }
   | { kind: 'intro'; key: string; label: string; hint: string; introIndex: number; intro: IntroSlide }
   | { kind: 'dynamique'; key: string; label: string; hint: string }
-  | { kind: 'content'; key: string; label: string; hint: string; content: Content }
   | { kind: 'outro'; key: string; label: string; hint: string }
 
 function buildDeck(data: EventData): DeckSlide[] {
@@ -34,18 +34,9 @@ function buildDeck(data: EventData): DeckSlide[] {
         intro: slide,
       }),
     ),
-    // Slide dynamique principale — toujours présente (cœur de la table ronde,
-    // PRD 5.4). Sans embed sélectionné : scène au repos (titre de l'événement).
+    // Slide dynamique — cœur de la table ronde (PRD 5.4) : scène titre au repos.
+    // Les contenus projetés se lancent depuis la vue Gestion (card Contenus).
     { kind: 'dynamique', key: 'dynamique', label: data.event.title, hint: 'Dynamique' },
-    ...data.contents.map(
-      (content): DeckSlide => ({
-        kind: 'content',
-        key: `content-${content.id}`,
-        label: content.label,
-        hint: `Dynamique · ${content.kind.replace('embed_', '')}`,
-        content,
-      }),
-    ),
     { kind: 'outro', key: 'outro', label: 'Outro', hint: 'Remerciements · sponsors' },
   ]
 }
@@ -70,8 +61,6 @@ function slideToState(slide: DeckSlide): ScreenState {
     case 'dynamique':
       // QR visible dans l'aperçu IR pour pouvoir le positionner (l'EP réel suit qrVisible).
       return { ...base, mode: 'dynamique', qrVisible: true }
-    case 'content':
-      return { ...base, mode: 'dynamique', mainContentId: slide.content.id, qrVisible: true }
     case 'outro':
       return { ...base, mode: 'outro' }
   }
@@ -90,11 +79,7 @@ function currentDeckIndex(deck: DeckSlide[], control: ControlState): number {
       return slide ? deck.indexOf(slide) : 0
     }
     case 'dynamique': {
-      const match = deck.findIndex(
-        (s) => s.kind === 'content' && s.content.id === screen.mainContentId,
-      )
-      if (match !== -1) return match
-      // Aucun embed sélectionné : se placer sur la slide dynamique principale.
+      // Contenus gérés dans Gestion : la slide dynamique = scène titre.
       const main = deck.findIndex((s) => s.kind === 'dynamique')
       return main !== -1 ? main : deck.length - 1
     }
@@ -132,13 +117,9 @@ export function SlidesView({
         control.goToIntroSlide(slide.introIndex)
         break
       case 'dynamique':
-        // Mode dynamique sans embed : scène au repos (titre événement).
+        // Contenus pilotés depuis Gestion : ici on garantit juste le mode dynamique
+        // (sans toucher au contenu courant, qui reste géré par la card Contenus).
         if (control.screen.mode !== 'dynamique') control.setMode('dynamique')
-        control.setMainContent(null)
-        break
-      case 'content':
-        if (control.screen.mode !== 'dynamique') control.setMode('dynamique')
-        control.setMainContent(slide.content.id)
         break
       case 'outro':
         control.setMode('outro')

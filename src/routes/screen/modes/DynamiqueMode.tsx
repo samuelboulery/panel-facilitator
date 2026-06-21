@@ -1,9 +1,10 @@
 // Mode DYNAMIQUE (PRD 5.4) — cœur de la table ronde.
 // Panneaux positionnés en absolu sur la scène 1920×1080 : QR ancré en haut à
-// droite, contenu principal plein cadre. Scène de repos (aucun contenu projeté) :
-// titre + overlay forment UN seul groupe repositionnable (une ancre commune). Le
-// sens d'empilement suit l'ancre : ancré bas → overlay sous le titre (titre poussé
-// vers le haut) ; ancré haut/centre → overlay au-dessus (le titre descend).
+// droite, contenu principal plein cadre. Titre + overlay forment UN seul groupe
+// repositionnable (une ancre commune). Le sens d'empilement suit l'ancre : ancré
+// bas → overlay sous le titre (titre poussé vers le haut) ; ancré haut/centre →
+// overlay au-dessus (le titre descend). Contenu projeté : le titre est masqué (le
+// QR reste), le groupe ne porte plus que l'overlay — même ancre, même comportement.
 import { motion } from 'framer-motion'
 import type { EventData } from '../../../realtime/eventData'
 import type { CardPosition, Content, EventPublic, Overlay, ScreenState } from '../../../shared/types'
@@ -48,21 +49,24 @@ function TitleCard({ event }: { event: EventPublic }) {
   )
 }
 
-// Groupe de repos = titre + overlay sous une seule ancre (slideKey commun). L'ordre
+// Groupe dynamique = titre + overlay sous une seule ancre (slideKey commun). L'ordre
 // d'empilement suit le bord d'ancre vertical : ancré bas → titre puis overlay (le
 // titre est poussé vers le haut) ; sinon overlay puis titre (le titre descend).
 // Par défaut (aucune position enregistrée) : ancré en haut à gauche, à côté du QR.
-function RestingGroup({
+// `showTitle` false (contenu projeté) : le groupe ne porte que l'overlay.
+function DynamicGroup({
   event,
   overlay,
   pos,
+  showTitle,
 }: {
   event: EventPublic
   overlay: Overlay | null
   pos: CardPosition | undefined
+  showTitle: boolean
 }) {
   const anchorBottom = pos?.anchorY === 'bottom'
-  const title = <TitleCard event={event} />
+  const title = showTitle ? <TitleCard event={event} /> : null
   const ovl = <OverlayHost overlay={overlay} enterFrom={anchorBottom ? 'bottom' : 'top'} />
   return (
     <MovableCard
@@ -122,13 +126,12 @@ export function DynamiqueMode({ data, state }: DynamiqueModeProps) {
     ? (data.contents.find((c) => c.id === state.mainContentId) ?? null)
     : null
   const url = content ? toEmbedUrl(content.kind, content.url) : null
-  // Scène d'affiche tant qu'aucun contenu principal valide n'est projeté.
-  const resting = !content || !url
+  const hasContent = Boolean(content && url)
 
   return (
     <div className="relative z-2 h-full">
       {/* Contenu principal plein cadre — ancré en absolu, sous les panneaux */}
-      {!resting && (
+      {hasContent && content && (
         <div className="absolute inset-16">
           <MainContent content={content} />
         </div>
@@ -139,18 +142,15 @@ export function DynamiqueMode({ data, state }: DynamiqueModeProps) {
         <QrBadge url={data.event.qrUrl} visible={state.qrVisible} />
       </MovableCard>
 
-      {/* Repos : titre + overlay groupés sous une ancre commune, repositionnables.
-          Contenu projeté : overlay seul en bandeau bas pleine largeur. */}
-      {resting ? (
-        <RestingGroup
+      {/* Groupe titre + overlay sous une ancre commune. Contenu projeté : titre
+          masqué — on ne rend le groupe que s'il porte un overlay (même ancre). */}
+      {(!hasContent || state.overlay !== null) && (
+        <DynamicGroup
           event={data.event}
           overlay={state.overlay}
           pos={state.cardPositions['dynamique-resting']}
+          showTitle={!hasContent}
         />
-      ) : (
-        <div className="absolute inset-x-16 bottom-16">
-          <OverlayHost overlay={state.overlay} enterFrom="top" />
-        </div>
       )}
     </div>
   )

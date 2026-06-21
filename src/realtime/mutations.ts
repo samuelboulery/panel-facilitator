@@ -63,6 +63,11 @@ export const setIntroMode = (s: ControlSession, index: number) =>
 export const setMainContent = (s: ControlSession, contentId: string | null) =>
   patchScreenState(s, { main_content_id: contentId })
 
+/** Lance un contenu : entre en mode dynamique ET fixe le contenu — UN SEUL patch
+ *  (deux RPCs séquentiels créeraient une course mode/contenu côté serveur). */
+export const setDynamicContent = (s: ControlSession, contentId: string) =>
+  patchScreenState(s, { mode: 'dynamique', main_content_id: contentId })
+
 export const showOverlay = (s: ControlSession, overlay: Overlay) =>
   patchScreenState(s, { overlay })
 

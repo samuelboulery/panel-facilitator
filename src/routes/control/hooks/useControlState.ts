@@ -24,6 +24,8 @@ export interface ControlState {
   /** Entre en mode intro directement sur une slide (un seul RPC, pas de course). */
   goToIntroSlide: (index: number) => void
   setMainContent: (contentId: string | null) => void
+  /** Lance un contenu : entre en dynamique (si besoin) puis le projette — un seul RPC. */
+  launchContent: (contentId: string) => void
   showOverlay: (overlay: Overlay) => void
   closeOverlay: () => void
   toggleSpeakersBanner: () => void
@@ -123,6 +125,33 @@ export function useControlState(session: ControlSession): ControlState {
           mutations.setMainContent(session, contentId),
         ),
       [dispatch, session],
+    ),
+    launchContent: useCallback(
+      (contentId: string) => {
+        // Un contenu n'existe qu'en mode dynamique : valide l'entrée en dynamique
+        // (si besoin) puis le contenu, mutation en un seul RPC (pas de course).
+        const afterMode =
+          screenRef.current.mode === 'dynamique'
+            ? { ok: true as const, state: screenRef.current }
+            : applyAction(screenRef.current, { type: 'SET_MODE', mode: 'dynamique' })
+        if (!afterMode.ok) {
+          setLastError(afterMode.reason)
+          return
+        }
+        const afterContent = applyAction(afterMode.state, {
+          type: 'SET_MAIN_CONTENT',
+          contentId,
+        })
+        if (!afterContent.ok) {
+          setLastError(afterContent.reason)
+          return
+        }
+        setScreen(afterContent.state)
+        mutations.setDynamicContent(session, contentId).catch((err: unknown) => {
+          setLastError(err instanceof Error ? err.message : 'Erreur réseau')
+        })
+      },
+      [session],
     ),
     showOverlay: useCallback(
       (overlay: Overlay) =>

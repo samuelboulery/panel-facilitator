@@ -120,6 +120,13 @@ function ControlShell({ session }: { session: ControlSession }) {
       ? (definitions.find((d) => d.id === overlay.id) ?? null)
       : null
 
+  // Contenu projeté (mode dynamique uniquement — sinon le contenu n'apparaît pas
+  // sur l'EP) : rappel + bouton d'arrêt dans la barre d'état.
+  const activeContent =
+    control.screen.mode === 'dynamique' && control.screen.mainContentId
+      ? (data?.contents.find((c) => c.id === control.screen.mainContentId) ?? null)
+      : null
+
   // Fermeture auto de la définition après lecture. Le timer redémarre à chaque
   // nouvelle définition (clé = overlay.id) ; cleanup l'annule si la régie ferme
   // avant ou lance un autre overlay.
@@ -172,6 +179,7 @@ function ControlShell({ session }: { session: ControlSession }) {
             questions={questions}
             polls={polls}
             definitions={definitions}
+            contents={data.contents}
             onLaunch={setLaunch}
           />,
           <NotesView key="notes" session={session} />,
@@ -206,9 +214,11 @@ function ControlShell({ session }: { session: ControlSession }) {
         activePollResults={activePollResults}
         activeQuestion={activeQuestion}
         activeDefinition={activeDefinition}
+        activeContent={activeContent}
         onStopPoll={stopPoll}
         onCloseQuestion={closeQuestion}
         onCloseDefinition={control.closeOverlay}
+        onStopContent={() => control.setMainContent(null)}
         onToggleTimer={() => {
           mutations
             .setTimerStartedAt(
