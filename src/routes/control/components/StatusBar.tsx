@@ -1,19 +1,23 @@
-// Barre d'état basse de l'IR (maquettes iPad 13/17/18) — toujours visible :
-// overlay actif (gauche), mode courant (centre), heure + durée (droite).
-// Sondage live : la barre s'étend avec les résultats temps réel et le bouton
-// « Arrêter le sondage » (iPad 18). Question active : « Retirer la question ».
+// Barre d'état basse de l'IR — s'adapte à l'état EP (maquette Figma, 7 états).
+// Thème CLAIR hors mode dynamique (attente/intro/outro), SOMBRE en dynamique
+// (seul mode où vivent overlays, contenu et navigation interne — cf. machine
+// à états). Région gauche : libellé de mode centré, ou panneau de l'overlay
+// actif (sondage/vote, question, contenu) avec son action. Cluster droit
+// permanent : Définition (si active, lecture seule), Heure, Durée (timer
+// manuel), navigation Slides (intro/contenu dynamique).
 import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import type { Content, Definition, Poll, PollResults, Question, ScreenState } from '../../../shared/types'
 
 const MODE_LABELS: Record<ScreenState['mode'], string> = {
   attente: 'Attente',
   intro: 'Intro',
-  dynamique: 'Dynamique',
+  dynamique: 'Slides Dynamiques',
   outro: 'Outro',
 }
 
-const OVERLAY_LABELS = { poll: 'Sondage', question: 'Question', definition: 'Définition' }
+// Remplissage des barres de résultats : blanc tant que le scrutin est ouvert,
+// ardoise une fois clôturé/révélé (état « Vote fini » de la maquette).
+const BAR_FILL_CLOSED = '#5b6478'
 
 function useClock(): Date {
   const [now, setNow] = useState(() => new Date())
@@ -39,21 +43,26 @@ function formatDuration(startedAt: string | null, now: Date): string {
 
 interface StatusBarProps {
   screen: ScreenState
-  /** Sondage actuellement en overlay (résultats live), null sinon. */
+  /** Sondage/vote actuellement en overlay (résultats live), null sinon. */
   activePoll: Poll | null
   activePollResults: PollResults
   /** Question actuellement en overlay, null sinon. */
   activeQuestion: Question | null
-  /** Définition actuellement en overlay, null sinon. */
+  /** Définition actuellement en overlay, null sinon (colonne lecture seule). */
   activeDefinition: Definition | null
   /** Contenu projeté (mode dynamique), null sinon. */
   activeContent: Content | null
+  /** Clôture le scrutin : « Arrêter le sondage » (poll) / « Révéler le résultat » (versus). */
   onStopPoll: () => void
+  /** Retire l'overlay scrutin de l'EP : « Retirer le sondage/vote » (statut clôturé). */
+  onRemovePoll: () => void
   onCloseQuestion: () => void
-  onCloseDefinition: () => void
   onStopContent: () => void
   /** Démarre/arrête le timer de durée (bouton sur la case Durée). */
   onToggleTimer: () => void
+  /** Navigation slides — null = flèche désactivée (mode sans navigation). */
+  onSlidePrev: (() => void) | null
+  onSlideNext: (() => void) | null
 }
 
 export function StatusBar({
@@ -64,54 +73,70 @@ export function StatusBar({
   activeDefinition,
   activeContent,
   onStopPoll,
+  onRemovePoll,
   onCloseQuestion,
-  onCloseDefinition,
   onStopContent,
   onToggleTimer,
+  onSlidePrev,
+  onSlideNext,
 }: StatusBarProps) {
   const now = useClock()
-  const overlayLabel = screen.overlay ? OVERLAY_LABELS[screen.overlay.type] : null
-  const pollIsLive = activePoll?.status === 'live'
+  // Seul le mode dynamique porte overlays/contenu : il fixe aussi le thème sombre.
+  const dark = screen.mode === 'dynamique'
+  const sep = dark ? 'border-white/10' : 'border-black/10'
+  const micro = `font-mono text-xs uppercase tracking-[0.2em] ${dark ? 'text-white/50' : 'text-control-dim'}`
+  const arrowCls = `flex h-8 w-8 items-center justify-center rounded-full text-xs active:scale-90 disabled:opacity-30 ${
+    dark ? 'bg-white/10' : 'bg-black/5'
+  }`
+  const actionBtn =
+    'shrink-0 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95'
+
   const totalVotes = Object.values(activePollResults).reduce((s, n) => s + n, 0)
+  const pollClosed = activePoll?.status === 'closed'
+  const isVersus = activePoll?.kind === 'versus'
 
   return (
-    <div className="z-30 shrink-0 bg-control-ink font-mono text-white">
-      {/* Extension sondage live (iPad 18) */}
-      <AnimatePresence>
-        {pollIsLive && activePoll && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden border-b border-white/10"
-          >
-            <div className="flex items-center justify-between px-5 pt-3 pb-1">
-              <span className="text-xs tracking-[0.2em] text-white/60 uppercase">Sondage</span>
+    <div
+      className={`z-30 flex shrink-0 items-stretch font-display ${
+        dark ? 'bg-control-ink text-white' : 'bg-control-panel text-control-ink'
+      }`}
+    >
+      {/* Région gauche — overlay actif ou libellé de mode centré */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center px-5 py-3">
+        {activePoll ? (
+          <>
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <span className={micro}>{isVersus ? 'Vote' : 'Sondage'}</span>
               <div className="flex items-center gap-4">
-                <span className="tabular text-sm text-white/60">{totalVotes} p.</span>
+                <span className="tabular font-mono text-sm text-white/60">{totalVotes} p.</span>
                 <button
                   type="button"
-                  onClick={onStopPoll}
-                  className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95"
+                  onClick={pollClosed ? onRemovePoll : onStopPoll}
+                  className={actionBtn}
                 >
-                  Arrêter le sondage
+                  {pollClosed
+                    ? isVersus
+                      ? 'Retirer le vote'
+                      : 'Retirer le sondage'
+                    : isVersus
+                      ? 'Révéler le résultat'
+                      : 'Arrêter le sondage'}
                 </button>
               </div>
             </div>
-            <div className="flex flex-col gap-1.5 px-5 pb-3">
+            <div className="flex flex-col gap-1.5">
               {activePoll.options.map((option) => {
                 const count = activePollResults[option.id] ?? 0
                 const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0
                 return (
-                  <div key={option.id} className="relative h-7 overflow-hidden rounded bg-white/10">
+                  <div key={option.id} className="relative h-9 overflow-hidden rounded-full bg-white/10">
                     <div
-                      className="absolute inset-y-0 left-0 bg-white/85 transition-[width] duration-300"
-                      style={{ width: `${pct}%` }}
+                      className="absolute inset-y-0 left-0 transition-[width] duration-300"
+                      style={{ width: `${pct}%`, backgroundColor: pollClosed ? BAR_FILL_CLOSED : '#ffffff' }}
                     />
-                    <div className="relative z-2 flex h-full items-center justify-between px-3 text-sm mix-blend-difference">
-                      <span>{option.label}</span>
-                      <span className="tabular">
+                    <div className="relative z-2 flex h-full items-center justify-between px-4 text-sm mix-blend-difference">
+                      <span className="truncate">{option.label}</span>
+                      <span className="tabular shrink-0 font-mono">
                         {pct}% - {String(count).padStart(2, '0')} p
                       </span>
                     </div>
@@ -119,123 +144,98 @@ export function StatusBar({
                 )
               })}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Question active : rappel + retrait (iPad 17) */}
-      <AnimatePresence>
-        {activeQuestion && screen.overlay?.type === 'question' && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden border-b border-white/10"
-          >
-            <div className="flex items-center justify-between gap-4 px-5 py-2.5">
-              <p className="truncate text-sm text-white/80">{activeQuestion.text}</p>
-              <button
-                type="button"
-                onClick={onCloseQuestion}
-                className="shrink-0 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95"
-              >
+          </>
+        ) : activeQuestion ? (
+          <>
+            <span className={micro}>Question</span>
+            <div className="mt-1 flex items-center justify-between gap-4">
+              <p className="truncate text-base">{activeQuestion.text}</p>
+              <button type="button" onClick={onCloseQuestion} className={actionBtn}>
                 Retirer la question
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Définition active : rappel + retrait (symétrie avec la question) */}
-      <AnimatePresence>
-        {screen.overlay?.type === 'definition' && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden border-b border-white/10"
-          >
-            <div className="flex items-center justify-between gap-4 px-5 py-2.5">
-              <p className="truncate text-sm text-white/80">
-                {activeDefinition?.term ?? 'Définition affichée'}
-              </p>
-              <button
-                type="button"
-                onClick={onCloseDefinition}
-                className="shrink-0 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95"
-              >
-                Retirer la définition
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Contenu projeté : rappel + arrêt (retour à la scène titre) */}
-      <AnimatePresence>
-        {activeContent && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden border-b border-white/10"
-          >
-            <div className="flex items-center justify-between gap-4 px-5 py-2.5">
-              <p className="truncate text-sm text-white/80">
-                Contenu en cours : {activeContent.label}
-              </p>
-              <button
-                type="button"
-                onClick={onStopContent}
-                className="shrink-0 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95"
-              >
+          </>
+        ) : activeContent ? (
+          <>
+            <span className={micro}>Contenu</span>
+            <div className="mt-1 flex items-center justify-between gap-4">
+              <p className="truncate text-base">Contenu en cours : {activeContent.label}</p>
+              <button type="button" onClick={onStopContent} className={actionBtn}>
                 Arrêter le contenu
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Rangée permanente */}
-      <div className="flex items-stretch">
-        <div className="flex flex-1 flex-col justify-center px-5 py-2">
-          <span className="text-xs tracking-[0.2em] text-white/50 uppercase">
-            {overlayLabel ?? '—'}
-          </span>
-          <span className="text-center text-lg font-semibold tracking-wide">
+          </>
+        ) : (
+          <span className="w-full text-center text-lg font-semibold tracking-wide">
             {MODE_LABELS[screen.mode]}
           </span>
-        </div>
+        )}
+      </div>
 
-        <div className="flex flex-col items-center justify-center border-l border-white/10 px-5">
-          <span className="text-xs tracking-[0.2em] text-white/50 uppercase">Heure</span>
-          <span className="tabular text-lg font-semibold">
-            {now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')}
-          </span>
+      {/* Définition active : colonne compacte (lecture seule, auto-fermeture 12 s). */}
+      {activeDefinition && (
+        <div className={`relative flex flex-col items-center justify-center border-l ${sep} px-6`}>
+          <span className={micro}>Définition</span>
+          <span className="mt-1 text-lg font-semibold">{activeDefinition.term}</span>
+          {/* Filet d'accent : signale la définition affichée sur l'EP. */}
+          <span className="absolute inset-x-0 bottom-0 h-[3px] bg-control-accent" />
         </div>
-        {/* Durée : timer manuel — tap pour démarrer/arrêter */}
-        <button
-          type="button"
-          onClick={onToggleTimer}
-          className="flex flex-col items-center justify-center border-l border-white/10 px-5 active:bg-white/5"
+      )}
+
+      {/* Heure */}
+      <div className={`flex flex-col items-center justify-center border-l ${sep} px-5`}>
+        <span className={micro}>Heure</span>
+        <span className="tabular text-lg font-semibold">
+          {now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')}
+        </span>
+      </div>
+
+      {/* Durée : timer manuel — tap pour démarrer/arrêter */}
+      <button
+        type="button"
+        onClick={onToggleTimer}
+        className={`flex flex-col items-center justify-center border-l ${sep} px-5 ${
+          dark ? 'active:bg-white/5' : 'active:bg-black/5'
+        }`}
+      >
+        <span className={`flex items-center gap-1.5 ${micro}`}>
+          Durée
+          <span aria-hidden className="text-[10px]">
+            {screen.timerStartedAt ? '■' : '▶'}
+          </span>
+        </span>
+        <span
+          className={`tabular text-lg font-semibold ${
+            screen.timerStartedAt ? '' : dark ? 'text-white/40' : 'text-control-dim'
+          }`}
         >
-          <span className="flex items-center gap-1.5 text-xs tracking-[0.2em] text-white/50 uppercase">
-            Durée
-            <span aria-hidden className="text-[10px]">
-              {screen.timerStartedAt ? '■' : '▶'}
-            </span>
-          </span>
-          <span
-            className={`tabular text-lg font-semibold ${
-              screen.timerStartedAt ? '' : 'text-white/40'
-            }`}
+          {formatDuration(screen.timerStartedAt, now)}
+        </span>
+      </button>
+
+      {/* Slides : navigation interne (intro : slides ; dynamique : pas du deck) */}
+      <div className={`flex flex-col items-center justify-center gap-1 border-l ${sep} px-5`}>
+        <span className={micro}>Slides</span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            aria-label="Slide précédente"
+            disabled={!onSlidePrev}
+            onClick={() => onSlidePrev?.()}
+            className={arrowCls}
           >
-            {formatDuration(screen.timerStartedAt, now)}
-          </span>
-        </button>
+            ◀
+          </button>
+          <button
+            type="button"
+            aria-label="Slide suivante"
+            disabled={!onSlideNext}
+            onClick={() => onSlideNext?.()}
+            className={arrowCls}
+          >
+            ▶
+          </button>
+        </div>
       </div>
     </div>
   )
