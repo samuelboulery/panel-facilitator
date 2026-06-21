@@ -15,21 +15,43 @@ describe('isValidHttpUrl', () => {
 })
 
 describe('toEmbedUrl — Google Slides', () => {
-  it('convertit une URL /edit en /embed', () => {
+  it('convertit une URL /edit en /embed positionné slide 1 (step 0 par défaut)', () => {
     const url =
       'https://docs.google.com/presentation/d/1AbC_dEf/edit#slide=id.p1'
     expect(toEmbedUrl('embed_gslides', url)).toBe(
-      'https://docs.google.com/presentation/d/1AbC_dEf/embed?start=false&loop=false',
+      'https://docs.google.com/presentation/d/1AbC_dEf/embed?start=false&loop=false&slide=1',
     )
   })
 
-  it('conserve une URL déjà en /embed', () => {
+  it('normalise une URL déjà en /embed et applique le step (1-based)', () => {
     const url = 'https://docs.google.com/presentation/d/1AbC/embed?start=true'
-    expect(toEmbedUrl('embed_gslides', url)).toBe(url)
+    expect(toEmbedUrl('embed_gslides', url, 2)).toBe(
+      'https://docs.google.com/presentation/d/1AbC/embed?start=false&loop=false&slide=3',
+    )
+  })
+
+  it('borne le step négatif à la première slide', () => {
+    const url = 'https://docs.google.com/presentation/d/1AbC/edit'
+    expect(toEmbedUrl('embed_gslides', url, -5)).toBe(
+      'https://docs.google.com/presentation/d/1AbC/embed?start=false&loop=false&slide=1',
+    )
   })
 
   it('rejette une URL non-Google Slides', () => {
     expect(toEmbedUrl('embed_gslides', 'https://evil.com/presentation/d/x/edit')).toBeNull()
+  })
+})
+
+describe('toEmbedUrl — site web', () => {
+  it('laisse passer toute URL https valide (saisie admin de confiance)', () => {
+    expect(toEmbedUrl('embed_site', 'https://example.com/page?x=1')).toBe(
+      'https://example.com/page?x=1',
+    )
+  })
+
+  it('rejette une URL invalide', () => {
+    expect(toEmbedUrl('embed_site', 'javascript:alert(1)')).toBeNull()
+    expect(toEmbedUrl('embed_site', '')).toBeNull()
   })
 })
 

@@ -18,19 +18,23 @@ const OVERLAY_LABELS = { poll: 'Sondage', question: 'Question', definition: 'Dé
 function useClock(): Date {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 10_000)
+    // Tick 1s : le chrono Durée affiche les secondes et doit avancer visiblement.
+    const id = setInterval(() => setNow(new Date()), 1_000)
     return () => clearInterval(id)
   }, [])
   return now
 }
 
 function formatDuration(startedAt: string | null, now: Date): string {
-  if (!startedAt) return '00h00'
+  if (!startedAt) return '00:00'
   const elapsed = now.getTime() - new Date(startedAt).getTime()
-  if (Number.isNaN(elapsed) || elapsed < 0) return '00h00'
+  if (Number.isNaN(elapsed) || elapsed < 0) return '00:00'
   const h = Math.floor(elapsed / 3_600_000)
   const m = Math.floor((elapsed % 3_600_000) / 60_000)
-  return `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}`
+  const s = Math.floor((elapsed % 60_000) / 1000)
+  const mm = String(m).padStart(2, '0')
+  const ss = String(s).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }
 
 interface StatusBarProps {

@@ -26,6 +26,8 @@ export interface ControlState {
   setMainContent: (contentId: string | null) => void
   /** Lance un contenu : entre en dynamique (si besoin) puis le projette — un seul RPC. */
   launchContent: (contentId: string) => void
+  /** Navigue dans la slide interne du contenu dynamique (deck Google Slides). */
+  setContentStep: (step: number) => void
   showOverlay: (overlay: Overlay) => void
   closeOverlay: () => void
   toggleSpeakersBanner: () => void
@@ -152,6 +154,13 @@ export function useControlState(session: ControlSession): ControlState {
         })
       },
       [session],
+    ),
+    setContentStep: useCallback(
+      (step: number) =>
+        dispatch({ type: 'SET_CONTENT_STEP', step }, () =>
+          mutations.setContentStep(session, step),
+        ),
+      [dispatch, session],
     ),
     showOverlay: useCallback(
       (overlay: Overlay) =>

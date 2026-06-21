@@ -176,6 +176,22 @@ describe('contenu principal et navigation intro', () => {
     ko(initialScreenState, { type: 'SET_MAIN_CONTENT', contentId: 'c2' })
   })
 
+  it('réinitialise la slide interne en changeant de contenu', () => {
+    const s = ok({ ...dynamique, contentStep: 5 }, { type: 'SET_MAIN_CONTENT', contentId: 'c2' })
+    expect(s.contentStep).toBe(0)
+  })
+
+  it('navigue dans la slide interne du contenu (deck), borné à 0', () => {
+    const s = ok(dynamique, { type: 'SET_CONTENT_STEP', step: 3 })
+    expect(s.contentStep).toBe(3)
+    const s2 = ok(s, { type: 'SET_CONTENT_STEP', step: -2 })
+    expect(s2.contentStep).toBe(0)
+  })
+
+  it('refuse la navigation interne hors mode dynamique', () => {
+    ko(initialScreenState, { type: 'SET_CONTENT_STEP', step: 1 })
+  })
+
   it('avance et recule dans les slides intro, sans index négatif', () => {
     const intro: ScreenState = { ...initialScreenState, mode: 'intro' }
     const s = ok(intro, { type: 'SET_INTRO_SLIDE', index: 2 })

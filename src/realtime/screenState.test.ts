@@ -57,6 +57,7 @@ const validRow = {
   mode: 'dynamique',
   intro_slide_index: 0,
   main_content_id: null,
+  content_step: 0,
   overlay: { type: 'question', id: 'q1' },
   speakers_banner_visible: true,
   qr_visible: false,
