@@ -99,7 +99,7 @@ function MainContent({ content }: { content: Content }) {
         <iframe
           src={url}
           title={content.label}
-          className="h-full w-full border-0"
+          className="h-full w-full rounded-[20px] border-0"
           allow="autoplay; fullscreen"
           // allow-scripts requis : Slides/Figma sont des apps JS. Cross-origin,
           // allow-same-origin ne donne accès qu'à LEUR origine. Domaines
