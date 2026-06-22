@@ -3,6 +3,7 @@
 // les labels. Liste recalculée à chaque changement (speaker masqué en live
 // ⇒ la séquence se raccourcit, l'index est borné par clampIntroIndex).
 import { roleLabel } from './roleLabel'
+import { assoContentSchema } from './schemas'
 import type { EventPublic, Speaker } from './types'
 
 export type IntroSlideKind = 'asso' | 'title' | 'host' | 'speaker' | 'grid'
@@ -18,7 +19,10 @@ export interface IntroSlide {
 export function buildIntroSlides(event: EventPublic, speakers: Speaker[]): IntroSlide[] {
   const slides: IntroSlide[] = []
 
-  if (event.assoSlideEnabled) {
+  // Slide asso seulement si activée ET nom renseigné (PRD 5.3.1) — sinon
+  // l'intro commence directement par le titre.
+  const asso = assoContentSchema.safeParse(event.assoContent)
+  if (event.assoSlideEnabled && asso.success && asso.data?.name?.trim()) {
     slides.push({ kind: 'asso', label: 'Association' })
   }
 

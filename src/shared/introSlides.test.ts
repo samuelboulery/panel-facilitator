@@ -42,10 +42,16 @@ describe('buildIntroSlides', () => {
     expect(slides.map((s) => s.kind)).toEqual(['title', 'host', 'speaker', 'speaker', 'grid'])
   })
 
-  it('inclut la slide asso en tête si activée', () => {
-    const withAsso = { ...event, assoSlideEnabled: true }
+  it('inclut la slide asso en tête si activée avec nom', () => {
+    const withAsso = { ...event, assoSlideEnabled: true, assoContent: { name: 'ACME' } }
     const slides = buildIntroSlides(withAsso, [speaker('a')])
     expect(slides[0].kind).toBe('asso')
+  })
+
+  it('omet la slide asso si activée mais sans nom', () => {
+    const noName = { ...event, assoSlideEnabled: true, assoContent: null }
+    const slides = buildIntroSlides(noName, [speaker('a')])
+    expect(slides[0].kind).toBe('title')
   })
 
   it('omet l’animateur s’il n’y en a pas', () => {
