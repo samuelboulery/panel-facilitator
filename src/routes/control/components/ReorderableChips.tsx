@@ -90,16 +90,16 @@ export function ReorderableChips({ items, activeId, onTap, onReorder }: Reordera
               if (dragDistance.current <= DRAG_THRESHOLD_PX) onTap(item.id)
               dragDistance.current = 0
             }}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium shadow-sm transition-colors active:scale-95 ${
+            className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xl font-medium shadow-sm transition-colors active:scale-95 ${
               activeId === item.id
                 ? 'bg-control-accent text-white'
                 : 'bg-control-card text-control-ink'
             }`}
           >
+            {item.label}
             <span aria-hidden className="cursor-grab text-control-dim">
               ⠿
             </span>
-            {item.label}
           </button>
         </motion.div>
       ))}

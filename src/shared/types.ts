@@ -121,6 +121,7 @@ export interface Question {
   status: QuestionStatus
   authorName: string | null
   pinned: boolean
+  pinnedAt: string | null
   sortOrder: number
 }
 
