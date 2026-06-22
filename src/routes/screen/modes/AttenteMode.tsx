@@ -101,7 +101,7 @@ function SpeakersCard({ data }: { data: EventData }) {
             {speakers.map((s, i) => (
               <span
                 key={s.id}
-                className={`h-5 w-5 transition-colors duration-300 ${
+                className={`h-5 w-5 rounded-full transition-colors duration-300 ${
                   i === active ? 'bg-accent' : 'bg-paper/30'
                 }`}
               />

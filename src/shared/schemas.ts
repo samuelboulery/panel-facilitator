@@ -177,6 +177,7 @@ export const questionRowSchema = z
     status: z.enum(['pending', 'displayed', 'done', 'archived']),
     author_name: z.string().nullable(),
     pinned: z.boolean(),
+    pinned_at: z.string().nullable().optional(),
     sort_order: z.number(),
   })
   .transform((r) => ({
@@ -186,6 +187,7 @@ export const questionRowSchema = z
     status: r.status,
     authorName: r.author_name,
     pinned: r.pinned,
+    pinnedAt: r.pinned_at ?? null,
     sortOrder: r.sort_order,
   }))
 

@@ -6,7 +6,7 @@ import { Reorder, useDragControls } from 'framer-motion'
 interface ReorderableListProps<T extends { id: string }> {
   items: T[]
   onReorder: (ids: string[]) => void
-  renderItem: (item: T) => React.ReactNode
+  renderItem: (item: T, handle: React.ReactNode) => React.ReactNode
 }
 
 export function ReorderableList<T extends { id: string }>({
@@ -56,11 +56,21 @@ function Row<T extends { id: string }>({
   onDragEnd,
 }: {
   item: T
-  renderItem: (item: T) => React.ReactNode
+  renderItem: (item: T, handle: React.ReactNode) => React.ReactNode
   onDragStart: () => void
   onDragEnd: () => void
 }) {
   const controls = useDragControls()
+  const handle = (
+    <button
+      type="button"
+      aria-label="Réordonner"
+      onPointerDown={(e) => controls.start(e)}
+      className="cursor-grab touch-none p-1 text-control-dim"
+    >
+      ⠿
+    </button>
+  )
   return (
     <Reorder.Item
       value={item}
@@ -68,17 +78,8 @@ function Row<T extends { id: string }>({
       dragControls={controls}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className="flex items-start gap-2"
     >
-      <button
-        type="button"
-        aria-label="Réordonner"
-        onPointerDown={(e) => controls.start(e)}
-        className="cursor-grab touch-none px-1 py-3 text-control-dim"
-      >
-        ⠿
-      </button>
-      <div className="min-w-0 flex-1">{renderItem(item)}</div>
+      {renderItem(item, handle)}
     </Reorder.Item>
   )
 }
