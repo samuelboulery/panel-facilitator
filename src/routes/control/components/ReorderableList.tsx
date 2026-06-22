@@ -56,7 +56,7 @@ function Row<T extends { id: string }>({
   onDragEnd,
 }: {
   item: T
-  renderItem: (item: T) => React.ReactNode
+  renderItem: (item: T, handle: React.ReactNode) => React.ReactNode
   onDragStart: () => void
   onDragEnd: () => void
 }) {
