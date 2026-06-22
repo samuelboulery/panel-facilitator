@@ -21,11 +21,19 @@ export function QrBadge({ url, visible }: QrBadgeProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: -16 }}
           transition={{ type: 'tween', duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="stage-card z-20 flex w-[300px] flex-col items-center gap-6"
+          className="stage-card z-20 flex w-[18.75rem] flex-col items-center gap-6"
         >
           <p className="text-center text-3xl text-paper">Posez-nous vos questions</p>
           <div className="rounded-2xl bg-paper p-4">
-            <QRCodeSVG value={url} size={216} bgColor="#e8e9f2" fgColor="#0e0f14" />
+            {/* size = résolution de rendu (px) ; la largeur affichée suit la font
+                racine via la classe rem (h-auto garde le carré via le viewBox). */}
+            <QRCodeSVG
+              value={url}
+              size={216}
+              bgColor="#e8e9f2"
+              fgColor="#0e0f14"
+              className="h-auto w-[13.5rem]"
+            />
           </div>
         </motion.div>
       )}
