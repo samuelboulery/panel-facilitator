@@ -9,7 +9,7 @@ export function OutroMode({ data }: { data: EventData }) {
     <div className="relative z-2 h-full text-center">
       <MovableCard
         slideKey="outro-thanks"
-        className="stage-card absolute left-1/2 top-[34%] max-w-[1300px] -translate-x-1/2 -translate-y-1/2 text-center"
+        className="stage-card absolute left-1/2 top-[34%] max-w-[81.25rem] -translate-x-1/2 -translate-y-1/2 text-center"
       >
         <p className="micro-label mb-8">Merci</p>
         <h1 className="display-title text-7xl">
@@ -20,7 +20,7 @@ export function OutroMode({ data }: { data: EventData }) {
       {sponsors.length > 0 && (
         <MovableCard
           slideKey="outro-sponsors"
-          className="stage-card absolute bottom-[12%] left-1/2 w-fit max-w-[1400px] -translate-x-1/2"
+          className="stage-card absolute bottom-[12%] left-1/2 w-fit max-w-[87.5rem] -translate-x-1/2"
         >
           <div className="flex flex-wrap items-center justify-center gap-x-20 gap-y-10">
             {sponsors.map((sponsor) => (

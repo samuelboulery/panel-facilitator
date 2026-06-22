@@ -72,7 +72,7 @@ function DynamicGroup({
   return (
     <MovableCard
       slideKey="dynamique-resting"
-      className="absolute left-16 top-16 flex w-[820px] max-w-[58%] flex-col gap-10"
+      className="absolute left-16 top-16 flex w-[51.25rem] max-w-[58%] flex-col gap-10"
     >
       {anchorBottom ? (
         <>
@@ -112,7 +112,7 @@ function MainContent({ content, step }: { content: Content; step: number }) {
         <iframe
           src={url}
           title={content.label}
-          className="h-full w-full rounded-[20px] border-0"
+          className="h-full w-full rounded-[1.25rem] border-0"
           allow="autoplay; fullscreen"
           // allow-scripts requis : Figma/site sont des apps JS. Cross-origin,
           // allow-same-origin ne donne accès qu'à LEUR origine. Figma whitelisté

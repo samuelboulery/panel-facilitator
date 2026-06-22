@@ -98,7 +98,7 @@ export function PollOverlay({ id }: { id: string }) {
         {isLive && ' — en cours'}
         {isClosed && ' — clôturé'}
       </p>
-      <p className="display-title mb-8 max-w-[1240px] text-5xl leading-tight">
+      <p className="display-title mb-8 max-w-[77.5rem] text-5xl leading-tight">
         {poll.question}
       </p>
 

@@ -68,10 +68,10 @@ function SpeakersCard({ data }: { data: EventData }) {
   const speaker = speakers[active]
 
   return (
-    <aside className="stage-card flex w-[560px] shrink-0 flex-col gap-6">
+    <aside className="stage-card flex w-[35rem] shrink-0 flex-col gap-6">
       <p className="micro-label">Nos intervenant·es…</p>
 
-      <div className="relative min-h-[420px]">
+      <div className="relative min-h-[26.25rem]">
         <AnimatePresence mode="wait">
           <motion.div
             key={speaker.id}
@@ -81,7 +81,7 @@ function SpeakersCard({ data }: { data: EventData }) {
             transition={{ type: 'tween', duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-col gap-6"
           >
-            <SpeakerAvatar speaker={speaker} className="stage-card-media h-[200px] w-[200px] text-5xl" />
+            <SpeakerAvatar speaker={speaker} className="stage-card-media h-[12.5rem] w-[12.5rem] text-5xl" />
             <div>
               <p className="display-title text-5xl">
                 {speaker.firstName} {speaker.lastName}
@@ -123,7 +123,7 @@ export function AttenteMode({ data }: { data: EventData }) {
       <MovableCard
         as="section"
         slideKey="attente-title"
-        className="stage-card absolute left-20 top-1/2 flex max-w-[860px] -translate-y-1/2 flex-col gap-6"
+        className="stage-card absolute left-20 top-1/2 flex max-w-[53.75rem] -translate-y-1/2 flex-col gap-6"
       >
         <div className="flex items-center gap-6 text-3xl">
           <span>{label}</span>
@@ -140,7 +140,7 @@ export function AttenteMode({ data }: { data: EventData }) {
 
       <MovableCard
         slideKey="attente-speakers"
-        className="absolute right-20 top-1/2 -translate-y-1/2 rounded-[20px]"
+        className="absolute right-20 top-1/2 -translate-y-1/2 rounded-[1.25rem]"
       >
         <SpeakersCard data={data} />
       </MovableCard>

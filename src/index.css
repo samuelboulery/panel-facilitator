@@ -26,6 +26,41 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
+/* §1 — KNOB DE TAILLE EP.
+   Toutes les tailles de /screen sont en rem (→ relatives à la font-size racine)
+   ou en em (→ relatives au texte local : initiales d'avatar). Conséquence :
+   changer `font-size` sur :root/html met TOUT l'EP à l'échelle d'un seul geste,
+   sans casser les proportions. Laissé au défaut navigateur (16px) ici. */
+:root {
+  font-size: 100%;
+}
+
+/* §1b — BREAKPOINTS RÉSOLUTION EP.
+   L'EP est dessiné pour 1920×1080. Sur écran plus petit, on réduit la font-size
+   racine → tout l'EP rétrécit proportionnellement (cf. knob §1), sans scrollbar
+   ni débordement. Trois paliers : FHD (défaut 16px) → MacBook 14" → tablette.
+   Scopé à la PAGE EP autonome : `:has` ne cible le html que si une .screen-surface
+   existe SANS .control-preview — l'aperçu IR (/control) embarque aussi une
+   .screen-surface mais garde son échelle propre (transform), donc on l'exclut. */
+@media (max-width: 1919px) {
+  /* MacBook 14" (~1512px logiques) & laptops < FHD */
+  html:has(.screen-surface):not(:has(.control-preview)) {
+    font-size: 81.25%; /* ~13px */
+  }
+}
+@media (max-width: 1279px) {
+  /* Tablette (iPad paysage ~1024–1180px) */
+  html:has(.screen-surface):not(:has(.control-preview)) {
+    font-size: 62.5%; /* ~10px */
+  }
+}
+@media (max-width: 700px) {
+  /* Tablette (iPad paysage ~1024–1180px) */
+  html:has(.screen-surface):not(:has(.control-preview)) {
+    font-size: 50%; /* ~10px */
+  }
+}
+
 /* L'EP ne doit jamais afficher de scrollbar (contrainte PRD §4.1). */
 .screen-surface {
   width: 100vw;
@@ -68,19 +103,22 @@
    variables de branding (--color-paper). */
 
 .blurry {
-  background: rgba(0, 0, 0, 0.21);
+  background: rgba(0, 0, 0, 0.40);
   box-shadow: rgba(0, 0, 0, 0.15) 0px 8px 32px, rgba(0, 0, 0, 0.05) 0px 2px 8px, rgba(255, 255, 255, 0.3) 0px 1px 0px inset, rgba(255, 255, 255, 0.15) 0px -1px 0px inset;
   backdrop-filter: blur(16px) saturate(1.2);
 }
 
 .stage-card {
-  border-radius: 20px;
-  padding: 40px;
-  background: rgba(0, 0, 0, 0.21);
+  /* Tailles en rem : la carte grandit avec la font-size racine (cf. knob §1).
+     Hairlines (border 1px) et flous d'ombre restent en px — décoratifs, ne
+     doivent pas grossir avec la typo. */
+  border-radius: 1.25rem;
+  padding: 2.5rem;
+  background: rgba(0, 0, 0, 0.40);
   box-shadow: rgba(0, 0, 0, 0.15) 0px 8px 32px, rgba(0, 0, 0, 0.05) 0px 2px 8px, rgba(255, 255, 255, 0.3) 0px 1px 0px inset, rgba(255, 255, 255, 0.15) 0px -1px 0px inset;
   backdrop-filter: blur(16px) saturate(1.2);
 
-  border-radius: 20px;
+  border-radius: 1.25rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   overflow: hidden;

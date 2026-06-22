@@ -28,11 +28,11 @@ function AssoSlide({ data }: { data: EventData }) {
   const content = parsed.success ? parsed.data : null
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center">
-      <MovableCard slideKey="intro-asso" className="stage-card flex max-w-[1200px] flex-col items-center text-center">
+      <MovableCard slideKey="intro-asso" className="stage-card flex max-w-[75rem] flex-col items-center text-center">
         <p className="micro-label mb-8">Présenté par</p>
         <h1 className="display-title text-8xl">{content?.name ?? ''}</h1>
         {content?.description && (
-          <p className="mt-8 max-w-[900px] text-2xl leading-relaxed text-paper-dim">
+          <p className="mt-8 max-w-[56.25rem] text-2xl leading-relaxed text-paper-dim">
             {content.description}
           </p>
         )}
@@ -45,7 +45,7 @@ function TitleSlide({ data }: { data: EventData }) {
   const { event } = data
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center">
-      <MovableCard slideKey="intro-title" className="stage-card flex max-w-[1300px] flex-col items-center text-center">
+      <MovableCard slideKey="intro-title" className="stage-card flex max-w-[81.25rem] flex-col items-center text-center">
         <MicroHeader data={data} />
         <h1 className="display-title text-8xl">{event.title}</h1>
         {event.eventDate && (
@@ -66,8 +66,8 @@ function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center px-24">
       <MovableCard slideKey={`intro-person-${speaker.id}`} className="stage-card flex items-center gap-16">
-        <SpeakerAvatar speaker={speaker} className="stage-card-media h-[420px] w-[340px] text-8xl" />
-        <div className="max-w-[680px]">
+        <SpeakerAvatar speaker={speaker} className="stage-card-media h-[26.25rem] w-[21.25rem] text-8xl" />
+        <div className="max-w-[42.5rem]">
         <p className="micro-label mb-6 text-accent">{role}</p>
         <h1 className="display-title text-7xl">
           {speaker.firstName}
@@ -78,7 +78,7 @@ function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
           {[speaker.title, speaker.company].filter(Boolean).join(' · ')}
         </p>
         {speaker.bio && (
-          <p className="mt-8 max-w-[640px] text-2xl leading-relaxed text-paper-dim">
+          <p className="mt-8 max-w-[40rem] text-2xl leading-relaxed text-paper-dim">
             {speaker.bio}
           </p>
         )}
@@ -105,7 +105,7 @@ function GridSlide({ data }: { data: EventData }) {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 * i, duration: 0.4, ease: EASE }}
-            className="stage-card flex w-[290px] flex-col items-center gap-4 text-center"
+            className="stage-card flex w-[18.125rem] flex-col items-center gap-4 text-center"
           >
             <SpeakerAvatar speaker={speaker} className="stage-card-media h-32 w-32 text-5xl" />
             <div>
