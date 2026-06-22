@@ -91,6 +91,19 @@
   color: var(--color-paper-dim);
 }
 
+/* Petits textes en couleurs inversées (ex. description des participants) :
+   surlignage = couleur du texte, texte = couleur du fond. Rendu via un
+   underline épais (skip-ink off, offset négatif) → le fond épouse exactement
+   le texte, ligne par ligne, sans marge ni padding. */
+.text-inverted {
+  color: var(--color-ink);
+  text-decoration-line: underline;
+  text-decoration-color: var(--color-paper-dim);
+  text-decoration-skip-ink: none;
+  text-decoration-thickness: 1.5em;
+  text-underline-offset: -1em;
+}
+
 /* Chiffres de timer / résultats — tabulaires pour éviter le tremblement. */
 .tabular {
   font-variant-numeric: tabular-nums;

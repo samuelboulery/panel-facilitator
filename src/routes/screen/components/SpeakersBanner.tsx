@@ -35,7 +35,7 @@ export function SpeakersBanner({ speakers, visible }: SpeakersBannerProps) {
                 <p className={`truncate font-semibold ${compact ? 'text-sm' : 'text-base'}`}>
                   {speaker.firstName} {speaker.lastName}
                 </p>
-                <p className="truncate font-mono text-xs text-paper-dim">
+                <p className="truncate font-mono text-sm text-inverted">
                   {[speaker.title, speaker.company].filter(Boolean).join(' · ')}
                 </p>
               </div>
