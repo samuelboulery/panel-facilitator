@@ -16,6 +16,7 @@ import {
   subscribeSpeakerList,
 } from '../../realtime/controlData'
 import type { Definition, Poll, PollResults, Question, Speaker } from '../../shared/types'
+import { buildDeck, currentDeckIndex, goToDeckSlide } from './views/deck'
 import { PinGate } from './PinGate'
 import { useControlState } from './hooks/useControlState'
 import { StatusBar } from './components/StatusBar'
@@ -103,6 +104,10 @@ function ControlShell({ session }: { session: ControlSession }) {
     [control.screen.overlay, questions],
   )
 
+  // Deck de navigation (Attente → intro → Dynamique → Outro) : alimente les
+  // flèches Slides de la barre d'état, à l'identique du carrousel de la vue Slides.
+  const deck = useMemo(() => (data ? buildDeck(data) : []), [data])
+
   const stopPoll = useCallback(() => {
     if (!overlayPollId) return
     mutations.setPollStatus(session, overlayPollId, 'closed').catch(() => undefined)
@@ -146,6 +151,14 @@ function ControlShell({ session }: { session: ControlSession }) {
   // adjacentes dépassent des deux côtés et servent de poignées (tap ou swipe).
   const viewWidthPct = 100 - 2 * PEEK_PCT
   const offsetPct = PEEK_PCT - viewIndex * viewWidthPct
+
+  // Flèches Slides : navigation dans le deck, désactivées seulement aux extrémités
+  // (pas de slide précédente sur Attente, pas de suivante sur Outro).
+  const deckIndex = currentDeckIndex(deck, control.screen)
+  const prevSlide = deck[deckIndex - 1]
+  const nextSlide = deck[deckIndex + 1]
+  const slidePrev = prevSlide ? () => goToDeckSlide(prevSlide, control) : null
+  const slideNext = nextSlide ? () => goToDeckSlide(nextSlide, control) : null
 
   return (
     <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-control-bg font-display text-control-ink">
@@ -217,9 +230,11 @@ function ControlShell({ session }: { session: ControlSession }) {
         activeDefinition={activeDefinition}
         activeContent={activeContent}
         onStopPoll={stopPoll}
+        onRemovePoll={control.closeOverlay}
         onCloseQuestion={closeQuestion}
-        onCloseDefinition={control.closeOverlay}
         onStopContent={() => control.setMainContent(null)}
+        onSlidePrev={slidePrev}
+        onSlideNext={slideNext}
         onToggleTimer={() => {
           mutations
             .setTimerStartedAt(
