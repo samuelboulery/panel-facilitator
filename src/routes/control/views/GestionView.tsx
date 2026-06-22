@@ -166,7 +166,7 @@ export function GestionView({
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto">
       {/* Maquette : colonne large (Définitions + Questions) | colonne étroite
-          (Contenus + Sondages + Votes + Écran public). */}
+          (Contenus + Sondages + Votes). */}
       <div className="grid grid-cols-[1.7fr_1fr] gap-3">
         {/* Colonne gauche */}
         <div className="flex flex-col gap-3">
@@ -329,25 +329,6 @@ export function GestionView({
               )}
             />
           </SectionCard>
-
-          {/* Contrôles EP */}
-          <SectionCard title="Écran public">
-            <div className="flex flex-wrap gap-2">
-              <ToggleChip
-                label="QR code"
-                on={control.screen.qrVisible}
-                onToggle={control.toggleQr}
-              />
-              <button
-                type="button"
-                disabled={!overlay}
-                onClick={control.closeOverlay}
-                className="rounded-xl bg-control-ink px-4 py-2.5 text-sm font-medium text-white shadow-sm transition active:scale-95 disabled:opacity-30"
-              >
-                Fermer l’overlay
-              </button>
-            </div>
-          </SectionCard>
         </div>
       </div>
 
@@ -440,28 +421,6 @@ function PollCard({
       {poll.question}
       {live && ' · en cours'}
       {closed && ' · clôturé'}
-    </button>
-  )
-}
-
-function ToggleChip({
-  label,
-  on,
-  onToggle,
-}: {
-  label: string
-  on: boolean
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={`rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm transition active:scale-95 ${
-        on ? 'bg-control-card text-control-ink' : 'bg-control-card/50 text-control-dim line-through'
-      }`}
-    >
-      {label}
     </button>
   )
 }

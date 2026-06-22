@@ -233,6 +233,8 @@ function ControlShell({ session }: { session: ControlSession }) {
         onRemovePoll={control.closeOverlay}
         onCloseQuestion={closeQuestion}
         onStopContent={() => control.setMainContent(null)}
+        qrVisible={control.screen.qrVisible}
+        onToggleQr={control.toggleQr}
         onSlidePrev={slidePrev}
         onSlideNext={slideNext}
         onToggleTimer={() => {

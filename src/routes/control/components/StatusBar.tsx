@@ -4,7 +4,7 @@
 // à états). Région gauche : libellé de mode centré, ou panneau de l'overlay
 // actif (sondage/vote, question, contenu) avec son action. Cluster droit
 // permanent : Définition (si active, lecture seule), Heure, Durée (timer
-// manuel), navigation Slides (intro/contenu dynamique).
+// manuel), QR code (affiche/masque sur l'EP), navigation Slides.
 import { useEffect, useState } from 'react'
 import type { Content, Definition, Poll, PollResults, Question, ScreenState } from '../../../shared/types'
 
@@ -60,6 +60,10 @@ interface StatusBarProps {
   onStopContent: () => void
   /** Démarre/arrête le timer de durée (bouton sur la case Durée). */
   onToggleTimer: () => void
+  /** QR code affiché sur l'EP. */
+  qrVisible: boolean
+  /** Affiche/masque le QR code sur l'EP. */
+  onToggleQr: () => void
   /** Navigation slides — null = flèche désactivée (mode sans navigation). */
   onSlidePrev: (() => void) | null
   onSlideNext: (() => void) | null
@@ -77,6 +81,8 @@ export function StatusBar({
   onCloseQuestion,
   onStopContent,
   onToggleTimer,
+  qrVisible,
+  onToggleQr,
   onSlidePrev,
   onSlideNext,
 }: StatusBarProps) {
@@ -97,7 +103,7 @@ export function StatusBar({
 
   return (
     <div
-      className={`z-30 flex shrink-0 items-stretch font-display ${
+      className={`z-30 flex min-h-[105px] shrink-0 items-stretch font-display ${
         dark ? 'bg-control-ink text-white' : 'bg-control-panel text-control-ink'
       }`}
     >
@@ -212,6 +218,20 @@ export function StatusBar({
           {formatDuration(screen.timerStartedAt, now)}
         </span>
       </button>
+
+      {/* QR code : affiche/masque le QR sur l'EP — seulement en mode dynamique */}
+      {dark && (
+        <button
+          type="button"
+          onClick={onToggleQr}
+          className={`flex flex-col items-center justify-center border-l ${sep} px-5 active:bg-white/5`}
+        >
+          <span className={micro}>QR code</span>
+          <span className={`text-lg font-semibold ${qrVisible ? '' : 'text-white/40'}`}>
+            {qrVisible ? 'Affiché' : 'Masqué'}
+          </span>
+        </button>
+      )}
 
       {/* Slides : navigation interne (intro : slides ; dynamique : pas du deck) */}
       <div className={`flex flex-col items-center justify-center gap-1 border-l ${sep} px-5`}>
