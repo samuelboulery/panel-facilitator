@@ -23,7 +23,7 @@ export function DefinitionOverlay({ id }: { id: string }) {
       <div className="min-w-0 flex-1">
         <p className="micro-label mb-4 text-accent">Définition</p>
         <p className="display-title mb-4 text-5xl">{definition.term}</p>
-        <p className="max-w-[68.75rem] text-2xl leading-relaxed text-paper-dim">
+        <p className="max-w-[68.75rem] text-2xl leading-relaxed text-inverted">
           {definition.definition}
         </p>
       </div>

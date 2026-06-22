@@ -74,7 +74,7 @@ function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
           <br />
           {speaker.lastName}
         </h1>
-        <p className="mt-6 font-mono text-lg text-paper-dim">
+        <p className="mt-6 font-mono text-lg text-inverted">
           {[speaker.title, speaker.company].filter(Boolean).join(' · ')}
         </p>
         {speaker.bio && (
@@ -112,7 +112,7 @@ function GridSlide({ data }: { data: EventData }) {
               <p className="display-title text-2xl">
                 {speaker.firstName} {speaker.lastName}
               </p>
-              <p className="mt-1.5 font-mono text-xs text-paper-dim">
+              <p className="mt-1.5 font-mono text-sm text-inverted">
                 {[speaker.title, speaker.company].filter(Boolean).join(' · ')}
               </p>
             </div>
