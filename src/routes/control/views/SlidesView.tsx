@@ -1,15 +1,16 @@
 // Vue Slides (gauche) — carrousel de présentation (maquette iPad 15) :
 // grande carte-preview de la slide EP courante au centre, adjacentes en peek.
-// Séquence unifiée : Attente → slides intro → contenus dynamiques → Outro.
-// Naviguer (flèches, tap carte adjacente, swipe) pilote directement l'EP via
-// useControlState — toujours validé par la machine à états.
+// Séquence : Attente → slides intro → Dynamique → Outro. Les contenus projetés
+// (embeds/médias) sont pilotés depuis la vue Gestion (card Contenus), plus dans
+// le carrousel. Naviguer (flèches, tap carte adjacente, swipe) pilote directement
+// l'EP via useControlState — toujours validé par la machine à états.
 import { useEffect, useMemo, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { EventData } from '../../../realtime/eventData'
 import type { ControlSession } from '../../../realtime/mutations'
 import { setSpeakerHidden } from '../../../realtime/mutations'
 import { buildIntroSlides, clampIntroIndex, type IntroSlide } from '../../../shared/introSlides'
-import type { Content, ScreenState, CardPosition } from '../../../shared/types'
+import type { ScreenState, CardPosition } from '../../../shared/types'
 import type { ControlState } from '../hooks/useControlState'
 import { StagePreview } from './StagePreview'
 
@@ -17,7 +18,6 @@ type DeckSlide =
   | { kind: 'attente'; key: string; label: string; hint: string }
   | { kind: 'intro'; key: string; label: string; hint: string; introIndex: number; intro: IntroSlide }
   | { kind: 'dynamique'; key: string; label: string; hint: string }
-  | { kind: 'content'; key: string; label: string; hint: string; content: Content }
   | { kind: 'outro'; key: string; label: string; hint: string }
 
 function buildDeck(data: EventData): DeckSlide[] {
@@ -34,25 +34,15 @@ function buildDeck(data: EventData): DeckSlide[] {
         intro: slide,
       }),
     ),
-    // Slide dynamique principale — toujours présente (cœur de la table ronde,
-    // PRD 5.4). Sans embed sélectionné : scène au repos (titre de l'événement).
+    // Slide dynamique — cœur de la table ronde (PRD 5.4) : scène titre au repos.
+    // Les contenus projetés se lancent depuis la vue Gestion (card Contenus).
     { kind: 'dynamique', key: 'dynamique', label: data.event.title, hint: 'Dynamique' },
-    ...data.contents.map(
-      (content): DeckSlide => ({
-        kind: 'content',
-        key: `content-${content.id}`,
-        label: content.label,
-        hint: `Dynamique · ${content.kind.replace('embed_', '')}`,
-        content,
-      }),
-    ),
     { kind: 'outro', key: 'outro', label: 'Outro', hint: 'Remerciements · sponsors' },
   ]
 }
 
-/** État EP synthétique pour le rendu d'aperçu d'une slide du deck.
- *  `contentStep` positionne l'aperçu d'un deck Google Slides (0 pour les peeks). */
-function slideToState(slide: DeckSlide, contentStep = 0): ScreenState {
+/** État EP synthétique pour le rendu d'aperçu d'une slide du deck. */
+function slideToState(slide: DeckSlide): ScreenState {
   const base: ScreenState = {
     mode: 'attente',
     introSlideIndex: 0,
@@ -72,8 +62,6 @@ function slideToState(slide: DeckSlide, contentStep = 0): ScreenState {
     case 'dynamique':
       // QR visible dans l'aperçu IR pour pouvoir le positionner (l'EP réel suit qrVisible).
       return { ...base, mode: 'dynamique', qrVisible: true }
-    case 'content':
-      return { ...base, mode: 'dynamique', mainContentId: slide.content.id, contentStep, qrVisible: true }
     case 'outro':
       return { ...base, mode: 'outro' }
   }
@@ -92,11 +80,7 @@ function currentDeckIndex(deck: DeckSlide[], control: ControlState): number {
       return slide ? deck.indexOf(slide) : 0
     }
     case 'dynamique': {
-      const match = deck.findIndex(
-        (s) => s.kind === 'content' && s.content.id === screen.mainContentId,
-      )
-      if (match !== -1) return match
-      // Aucun embed sélectionné : se placer sur la slide dynamique principale.
+      // Contenus gérés dans Gestion : la slide dynamique = scène titre.
       const main = deck.findIndex((s) => s.kind === 'dynamique')
       return main !== -1 ? main : deck.length - 1
     }
@@ -137,13 +121,9 @@ export function SlidesView({
         control.goToIntroSlide(slide.introIndex)
         break
       case 'dynamique':
-        // Mode dynamique sans embed : scène au repos (titre événement).
+        // Contenus pilotés depuis Gestion : ici on garantit juste le mode dynamique
+        // (sans toucher au contenu courant, qui reste géré par la card Contenus).
         if (control.screen.mode !== 'dynamique') control.setMode('dynamique')
-        control.setMainContent(null)
-        break
-      case 'content':
-        if (control.screen.mode !== 'dynamique') control.setMode('dynamique')
-        control.setMainContent(slide.content.id)
         break
       case 'outro':
         control.setMode('outro')
@@ -344,15 +324,11 @@ function SlidePreview({
   control: ControlState
   editable: boolean
 }) {
-  // Deck Google Slides actif : la carte reflète la slide interne courante.
-  const isGslides = slide.kind === 'content' && slide.content.kind === 'embed_gslides'
-  const step = control.screen.contentStep
-
   return (
     <div className="relative w-full overflow-hidden rounded-2xl border border-black">
       <StagePreview
         data={data}
-        state={slideToState(slide, step)}
+        state={slideToState(slide)}
         cardPositions={control.screen.cardPositions}
         onCardDrag={editable ? control.setCardPosition : undefined}
       />
@@ -360,34 +336,6 @@ function SlidePreview({
       <p className="absolute top-3 left-3 z-30 rounded bg-black/40 px-2 py-1 font-mono text-[11px] tracking-[0.2em] text-white/80 uppercase backdrop-blur-sm">
         {slide.hint}
       </p>
-
-      {/* Navigation interne du deck (PRD 5.4.1) : avancer/reculer dans les slides
-          du contenu encapsulé. Pas de borne haute — total inconnu sans l'API Google.
-          ponytail: ◀ borné à 0, ▶ libre ; ajouter un compteur de slides si besoin. */}
-      {isGslides && (
-        <div className="absolute right-3 bottom-3 z-30 flex items-center gap-2">
-          <button
-            type="button"
-            disabled={step === 0}
-            onClick={() => control.setContentStep(step - 1)}
-            className="rounded bg-black/40 px-3 py-1 font-mono text-sm text-white/80 backdrop-blur-sm active:scale-95 disabled:opacity-30"
-            aria-label="Slide précédente du contenu"
-          >
-            ◀
-          </button>
-          <span className="rounded bg-black/40 px-2 py-1 font-mono text-[11px] text-white/80 backdrop-blur-sm">
-            {step + 1}
-          </span>
-          <button
-            type="button"
-            onClick={() => control.setContentStep(step + 1)}
-            className="rounded bg-black/40 px-3 py-1 font-mono text-sm text-white/80 backdrop-blur-sm active:scale-95"
-            aria-label="Slide suivante du contenu"
-          >
-            ▶
-          </button>
-        </div>
-      )}
 
       {/* Masquage speaker en live (désistement) directement sur la carte */}
       {slide.kind === 'intro' && slide.intro.kind === 'speaker' && slide.intro.speaker && (

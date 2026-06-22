@@ -4,7 +4,7 @@
 // « Arrêter le sondage » (iPad 18). Question active : « Retirer la question ».
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import type { Definition, Poll, PollResults, Question, ScreenState } from '../../../shared/types'
+import type { Content, Definition, Poll, PollResults, Question, ScreenState } from '../../../shared/types'
 
 const MODE_LABELS: Record<ScreenState['mode'], string> = {
   attente: 'Attente',
@@ -46,9 +46,12 @@ interface StatusBarProps {
   activeQuestion: Question | null
   /** Définition actuellement en overlay, null sinon. */
   activeDefinition: Definition | null
+  /** Contenu projeté (mode dynamique), null sinon. */
+  activeContent: Content | null
   onStopPoll: () => void
   onCloseQuestion: () => void
   onCloseDefinition: () => void
+  onStopContent: () => void
   /** Démarre/arrête le timer de durée (bouton sur la case Durée). */
   onToggleTimer: () => void
 }
@@ -59,9 +62,11 @@ export function StatusBar({
   activePollResults,
   activeQuestion,
   activeDefinition,
+  activeContent,
   onStopPoll,
   onCloseQuestion,
   onCloseDefinition,
+  onStopContent,
   onToggleTimer,
 }: StatusBarProps) {
   const now = useClock()
@@ -162,6 +167,32 @@ export function StatusBar({
                 className="shrink-0 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95"
               >
                 Retirer la définition
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Contenu projeté : rappel + arrêt (retour à la scène titre) */}
+      <AnimatePresence>
+        {activeContent && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden border-b border-white/10"
+          >
+            <div className="flex items-center justify-between gap-4 px-5 py-2.5">
+              <p className="truncate text-sm text-white/80">
+                Contenu en cours : {activeContent.label}
+              </p>
+              <button
+                type="button"
+                onClick={onStopContent}
+                className="shrink-0 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-control-ink active:scale-95"
+              >
+                Arrêter le contenu
               </button>
             </div>
           </motion.div>

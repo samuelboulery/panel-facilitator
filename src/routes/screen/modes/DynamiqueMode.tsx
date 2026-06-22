@@ -1,9 +1,13 @@
 // Mode DYNAMIQUE (PRD 5.4) — cœur de la table ronde.
 // Panneaux positionnés en absolu sur la scène 1920×1080 : QR ancré en haut à
-// droite, contenu principal plein cadre, et un seul groupe en flux — le titre
-// + les éléments dynamiques (overlays) qui apparaissent — ancré en bas.
+// droite, contenu principal plein cadre. Titre + overlay forment UN seul groupe
+// repositionnable (une ancre commune). Le sens d'empilement suit l'ancre : ancré
+// bas → overlay sous le titre (titre poussé vers le haut) ; ancré haut/centre →
+// overlay au-dessus (le titre descend). Contenu projeté : le titre est masqué (le
+// QR reste), le groupe ne porte plus que l'overlay — même ancre, même comportement.
+import { motion } from 'framer-motion'
 import type { EventData } from '../../../realtime/eventData'
-import type { Content, EventPublic, ScreenState } from '../../../shared/types'
+import type { CardPosition, Content, EventPublic, Overlay, ScreenState } from '../../../shared/types'
 import { toEmbedUrl } from '../../../shared/embed'
 import { GSlidesDeck } from './GSlidesDeck'
 import { QrBadge } from '../components/QrBadge'
@@ -21,13 +25,19 @@ function formatEventDate(iso: string | null): string | null {
   }).format(date)
 }
 
-// Scène au repos : carte titre en verre dépoli (maquette 250:1090),
-// placée en bas de la colonne par le layout flex.
-function RestingScene({ event }: { event: EventPublic }) {
+// Carte titre en verre dépoli (maquette 250:1090). La largeur et l'ancrage sont
+// portés par le groupe parent (RestingGroup) — ici, juste le contenu.
+// `layout` : anime le glissement du titre quand l'overlay apparaît/disparaît
+// (sinon il se téléporte à sa nouvelle place dans la colonne flex).
+function TitleCard({ event }: { event: EventPublic }) {
   const date = formatEventDate(event.eventDate)
   const lead = event.subtitle ?? event.edition
   return (
-    <MovableCard slideKey="dynamique-resting" className="stage-card flex w-[820px] max-w-[58%] flex-col gap-5">
+    <motion.div
+      layout
+      transition={{ type: 'tween', duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="stage-card flex flex-col gap-5"
+    >
       {(lead || date) && (
         <div className="flex items-center gap-5 text-3xl text-paper">
           {lead && <span>{lead}</span>}
@@ -36,6 +46,45 @@ function RestingScene({ event }: { event: EventPublic }) {
         </div>
       )}
       <p className="display-title text-7xl text-paper">{event.title}</p>
+    </motion.div>
+  )
+}
+
+// Groupe dynamique = titre + overlay sous une seule ancre (slideKey commun). L'ordre
+// d'empilement suit le bord d'ancre vertical : ancré bas → titre puis overlay (le
+// titre est poussé vers le haut) ; sinon overlay puis titre (le titre descend).
+// Par défaut (aucune position enregistrée) : ancré en haut à gauche, à côté du QR.
+// `showTitle` false (contenu projeté) : le groupe ne porte que l'overlay.
+function DynamicGroup({
+  event,
+  overlay,
+  pos,
+  showTitle,
+}: {
+  event: EventPublic
+  overlay: Overlay | null
+  pos: CardPosition | undefined
+  showTitle: boolean
+}) {
+  const anchorBottom = pos?.anchorY === 'bottom'
+  const title = showTitle ? <TitleCard event={event} /> : null
+  const ovl = <OverlayHost overlay={overlay} enterFrom={anchorBottom ? 'bottom' : 'top'} />
+  return (
+    <MovableCard
+      slideKey="dynamique-resting"
+      className="absolute left-16 top-16 flex w-[820px] max-w-[58%] flex-col gap-10"
+    >
+      {anchorBottom ? (
+        <>
+          {title}
+          {ovl}
+        </>
+      ) : (
+        <>
+          {ovl}
+          {title}
+        </>
+      )}
     </MovableCard>
   )
 }
@@ -63,7 +112,7 @@ function MainContent({ content, step }: { content: Content; step: number }) {
         <iframe
           src={url}
           title={content.label}
-          className="h-full w-full border-0"
+          className="h-full w-full rounded-[20px] border-0"
           allow="autoplay; fullscreen"
           // allow-scripts requis : Figma/site sont des apps JS. Cross-origin,
           // allow-same-origin ne donne accès qu'à LEUR origine. Figma whitelisté
@@ -90,13 +139,12 @@ export function DynamiqueMode({ data, state }: DynamiqueModeProps) {
     ? (data.contents.find((c) => c.id === state.mainContentId) ?? null)
     : null
   const url = content ? toEmbedUrl(content.kind, content.url) : null
-  // Scène d'affiche tant qu'aucun contenu principal valide n'est projeté.
-  const resting = !content || !url
+  const hasContent = Boolean(content && url)
 
   return (
     <div className="relative z-2 h-full">
       {/* Contenu principal plein cadre — ancré en absolu, sous les panneaux */}
-      {!resting && (
+      {hasContent && content && (
         <div className="absolute inset-16">
           <MainContent content={content} step={state.contentStep} />
         </div>
@@ -107,12 +155,16 @@ export function DynamiqueMode({ data, state }: DynamiqueModeProps) {
         <QrBadge url={data.event.qrUrl} visible={state.qrVisible} />
       </MovableCard>
 
-      {/* Groupe dynamique : titre + éléments dynamiques (overlays) qui
-          apparaissent — seul ensemble qui reste en flux. Ancré en bas. */}
-      <div className="absolute inset-x-16 bottom-16 flex flex-col gap-8">
-        <OverlayHost overlay={state.overlay} position={resting ? 'top' : 'bottom'} />
-        {resting && <RestingScene event={data.event} />}
-      </div>
+      {/* Groupe titre + overlay sous une ancre commune. Contenu projeté : titre
+          masqué — on ne rend le groupe que s'il porte un overlay (même ancre). */}
+      {(!hasContent || state.overlay !== null) && (
+        <DynamicGroup
+          event={data.event}
+          overlay={state.overlay}
+          pos={state.cardPositions['dynamique-resting']}
+          showTitle={!hasContent}
+        />
+      )}
     </div>
   )
 }

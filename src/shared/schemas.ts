@@ -27,7 +27,8 @@ export const screenStateRowSchema = z
         z.object({
           x: z.number(),
           y: z.number(),
-          edge: z.enum(['top', 'bottom', 'left', 'right']).optional(),
+          anchorX: z.enum(['left', 'center', 'right']).default('left'),
+          anchorY: z.enum(['top', 'center', 'bottom']).default('top'),
         }),
       )
       .default({}),

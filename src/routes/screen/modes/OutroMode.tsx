@@ -20,9 +20,8 @@ export function OutroMode({ data }: { data: EventData }) {
       {sponsors.length > 0 && (
         <MovableCard
           slideKey="outro-sponsors"
-          className="stage-card absolute bottom-[12%] left-1/2 max-w-[1400px] -translate-x-1/2"
+          className="stage-card absolute bottom-[12%] left-1/2 w-fit max-w-[1400px] -translate-x-1/2"
         >
-          <p className="micro-label mb-8 text-center">Merci à tous nos sponsors</p>
           <div className="flex flex-wrap items-center justify-center gap-x-20 gap-y-10">
             {sponsors.map((sponsor) => (
               <img
