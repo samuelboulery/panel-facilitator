@@ -308,6 +308,8 @@ export default function ControlRoute() {
   // Restauration de session après refresh (le PIN reste vérifié côté serveur
   // à chaque mutation — un PIN périmé échouera proprement).
   useEffect(() => {
+    // Mémorise la dernière régie ouverte pour le start_url du PWA (`/control`).
+    if (slug) localStorage.setItem('panel-facilitator:last-slug', slug)
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (raw && slug) {
       try {
