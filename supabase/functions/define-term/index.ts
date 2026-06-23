@@ -47,8 +47,12 @@ Deno.serve(async (req) => {
   // Deux chemins d'auth pour la même génération :
   //  - IR (anon) : PIN de session vérifié en base, comme toutes les mutations live.
   //  - Backoffice : JWT organisateur (verify_jwt=false au gateway → vérifié ici).
+  // IR (PIN) génère un brouillon (validated=false) soumis à revue régie ;
+  // le backoffice (JWT) insère une définition prête (validated=true).
   let eventId: string | null = null;
+  let validated = true;
   if (pin) {
+    validated = false;
     const { data, error: authError } = await supabase.rpc("control_auth", {
       p_slug: slug,
       p_pin: pin,
@@ -133,6 +137,7 @@ Deno.serve(async (req) => {
       event_id: eventId,
       term: term.trim(),
       definition,
+      validated,
       sort_order: ((maxRow as { sort_order: number } | null)?.sort_order ?? -1) + 1,
     })
     .select()

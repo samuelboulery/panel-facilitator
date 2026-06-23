@@ -8,7 +8,8 @@
 // et se re-synchronise au prochain événement realtime ; rpcError() a déjà loggé le
 // détail en console. Pas de retry (D : simplicité > robustesse réseau V1).
 import { supabase } from './client'
-import type { Overlay, Mode, PollKind, CardPosition } from '../shared/types'
+import { definitionRowSchema } from '../shared/schemas'
+import type { Definition, Overlay, Mode, PollKind, CardPosition } from '../shared/types'
 
 export interface ControlSession {
   slug: string
@@ -186,11 +187,35 @@ export async function reorderList(
 }
 
 /** Génère une définition courte par LLM (Edge Function — clé API côté serveur). */
-export async function generateDefinition(s: ControlSession, term: string): Promise<void> {
-  const { error } = await supabase.functions.invoke('define-term', {
+/**
+ * Génère une définition LLM et l'insère en brouillon (validated=false) : la régie
+ * la valide ou l'abandonne via la modale de revue. Renvoie la ligne créée pour
+ * alimenter la modale sans dépendre du timing realtime.
+ */
+export async function generateDefinition(s: ControlSession, term: string): Promise<Definition> {
+  const { data, error } = await supabase.functions.invoke('define-term', {
     body: { slug: s.slug, pin: s.pin, term },
   })
   if (error) throw rpcError('Génération de définition échouée', error)
+  const parsed = definitionRowSchema.safeParse((data as { definition?: unknown } | null)?.definition)
+  if (!parsed.success) throw rpcError('Définition générée invalide', parsed.error)
+  return parsed.data
+}
+
+/** Valide un brouillon de définition : le rend visible dans la liste IR. */
+export async function validateDefinition(s: ControlSession, definitionId: string): Promise<void> {
+  const { error } = await supabase.rpc('control_validate_definition', {
+    p_slug: s.slug, p_pin: s.pin, p_definition_id: definitionId,
+  })
+  if (error) throw rpcError('Validation de définition refusée', error)
+}
+
+/** Abandonne un brouillon de définition (« Annuler la définition »). */
+export async function deleteDefinition(s: ControlSession, definitionId: string): Promise<void> {
+  const { error } = await supabase.rpc('control_delete_definition', {
+    p_slug: s.slug, p_pin: s.pin, p_definition_id: definitionId,
+  })
+  if (error) throw rpcError('Suppression de définition refusée', error)
 }
 
 export async function saveNotes(s: ControlSession, contentMd: string): Promise<void> {

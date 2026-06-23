@@ -17,7 +17,7 @@ const EASE = [0.22, 1, 0.36, 1] as const
 function MicroHeader({ data }: { data: EventData }) {
   const { event } = data
   return (
-    <p className="micro-label mb-8">
+    <p className="micro-label mb-6">
       {[event.subtitle, event.edition].filter(Boolean).join(' — ') || 'Table ronde'}
     </p>
   )
@@ -65,10 +65,10 @@ function TitleSlide({ data }: { data: EventData }) {
 function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center px-24">
-      <MovableCard slideKey={`intro-person-${speaker.id}`} className="stage-card flex items-center gap-16">
+      <MovableCard slideKey={`intro-person-${speaker.id}`} className="stage-card flex gap-16">
         <SpeakerAvatar speaker={speaker} className="stage-card-media h-[26.25rem] w-[21.25rem] text-8xl" />
         <div className="max-w-[42.5rem]">
-        <p className="micro-label mb-6 text-accent">{role}</p>
+        <p className="micro-label mb-4 text-accent">{role}</p>
         <h1 className="display-title text-7xl">
           {speaker.firstName}
           <br />
@@ -78,7 +78,7 @@ function PersonSlide({ speaker, role }: { speaker: Speaker; role: string }) {
           {[speaker.title, speaker.company].filter(Boolean).join(' · ')}
         </p>
         {speaker.bio && (
-          <p className="mt-8 max-w-[40rem] text-2xl leading-relaxed text-paper-dim">
+          <p className="mt-6 max-w-[40rem] text-2xl leading-relaxed text-paper-dim">
             {speaker.bio}
           </p>
         )}

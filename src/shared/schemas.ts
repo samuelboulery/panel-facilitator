@@ -159,6 +159,7 @@ export const definitionRowSchema = z
     image_url: z.string().nullable().default(null),
     sort_order: z.number(),
     used: z.boolean().default(false),
+    validated: z.boolean().default(true),
   })
   .transform((r) => ({
     id: r.id,
@@ -167,6 +168,7 @@ export const definitionRowSchema = z
     imageUrl: r.image_url,
     sortOrder: r.sort_order,
     used: r.used,
+    validated: r.validated,
   }))
 
 export const questionRowSchema = z

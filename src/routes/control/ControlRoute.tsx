@@ -21,6 +21,7 @@ import { PinGate } from './PinGate'
 import { useControlState } from './hooks/useControlState'
 import { StatusBar } from './components/StatusBar'
 import { LaunchModal, type LaunchPayload } from './components/LaunchModal'
+import { DefinitionReviewModal } from './components/DefinitionReviewModal'
 import { GestionView } from './views/GestionView'
 import { SlidesView } from './views/SlidesView'
 import { NotesView } from './views/NotesView'
@@ -50,6 +51,8 @@ function ControlShell({ session }: { session: ControlSession }) {
   const [definitions, setDefinitions] = useState<Definition[]>([])
   const [viewIndex, setViewIndex] = useState(1) // Gestion par défaut
   const [launch, setLaunch] = useState<LaunchPayload | null>(null)
+  // Brouillon LLM en attente de revue (Annuler / Valider / Valider et lancer).
+  const [reviewDef, setReviewDef] = useState<Definition | null>(null)
   // Édition des positions de cartes (vue Slides) : gèle tout swipe horizontal
   // (cartes ET pager d'écrans) pour ne déplacer que les cartes.
   const [editLayout, setEditLayout] = useState(false)
@@ -195,6 +198,7 @@ function ControlShell({ session }: { session: ControlSession }) {
             definitions={definitions}
             contents={data.contents}
             onLaunch={setLaunch}
+            onGenerated={setReviewDef}
           />,
           <NotesView key="notes" session={session} />,
         ].map((view, i) => (
@@ -248,6 +252,34 @@ function ControlShell({ session }: { session: ControlSession }) {
       />
 
       <LaunchModal payload={launch} onDismiss={() => setLaunch(null)} />
+
+      <DefinitionReviewModal
+        definition={reviewDef}
+        onCancel={() => {
+          if (reviewDef) mutations.deleteDefinition(session, reviewDef.id).catch(() => undefined)
+          setReviewDef(null)
+        }}
+        onValidate={() => {
+          if (reviewDef) mutations.validateDefinition(session, reviewDef.id).catch(() => undefined)
+          setReviewDef(null)
+        }}
+        onValidateAndLaunch={() => {
+          if (reviewDef) {
+            const id = reviewDef.id
+            // Validation PUIS projection — la modale de revue tient lieu de
+            // confirmation, pas de LaunchModal 3 s ensuite. Usage unique : la
+            // définition disparaît de la liste dès le lancement.
+            mutations
+              .validateDefinition(session, id)
+              .then(() => {
+                control.showOverlay({ type: 'definition', id })
+                return mutations.setDefinitionUsed(session, id, true)
+              })
+              .catch(() => undefined)
+          }
+          setReviewDef(null)
+        }}
+      />
 
       {/* Toast d'erreur (refus machine à états ou échec RPC) */}
       <AnimatePresence>
