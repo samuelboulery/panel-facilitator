@@ -101,7 +101,7 @@
   text-decoration-color: var(--color-paper-dim);
   text-decoration-skip-ink: none;
   text-decoration-thickness: 1.5em;
-  text-underline-offset: -1em;
+  text-underline-offset: -1.05em;
 }
 
 /* Chiffres de timer / résultats — tabulaires pour éviter le tremblement. */

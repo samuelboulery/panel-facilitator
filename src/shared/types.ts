@@ -112,6 +112,8 @@ export interface Definition {
   sortOrder: number
   /** Déjà affichée pendant l'événement — ne se montre qu'une fois. */
   used: boolean
+  /** Validée par la régie (modale de revue) ; un brouillon LLM est false. */
+  validated: boolean
 }
 
 export interface Question {

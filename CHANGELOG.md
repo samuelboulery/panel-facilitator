@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## Revue des définitions générées (23 juin 2026)
+
+### Livré
+
+- **Modale de revue à la génération LLM (IR)** : générer une définition depuis `/control` ouvre une modale présentant terme + définition, avec trois actions — « Annuler la définition » (suppression), « Valider la définition » (ajout à la liste), « Valider et lancer » (validation + projection immédiate sur l'EP, sans la confirmation 3 s habituelle, la modale faisant office de confirmation).
+- **Brouillons invisibles avant validation** : la génération IR insère un brouillon `validated=false`, filtré de la liste régie tant que la régie n'a pas validé. Le rate-limit DeepSeek reste adossé aux inserts de `definitions` (pas de trou anti-abus). Le backoffice (JWT) continue d'insérer des définitions prêtes (`validated=true`).
+- Nouvelle colonne `definitions.validated` (default true → lignes existantes visibles) ; RPC `control_validate_definition` et `control_delete_definition`.
+
+### Setup requis
+
+- `supabase db reset` (migrations `20260623000001_definition_validated.sql` et `20260623000002_service_role_grants.sql`) + redéploiement de l'Edge Function `define-term`. La migration grants restaure les privilèges baseline de `service_role` (absents dans la stack), sans lesquels la fonction échoue en 42501 (premier appel direct via client service_role).
+
 ## Contenu dynamique — site, flèches, deck navigable (18 juin 2026)
 
 ### Livré (3 retours utilisateur)
@@ -23,7 +35,7 @@
 - **Vue Slides = carrousel de présentation** (maquette iPad 15) : deck unifié Attente → slides intro → contenus dynamiques → Outro ; grande preview centrale, cartes adjacentes en peek, swipe/tap/flèches pilotent l'EP (position dérivée de `screen_state`). Masquage speaker sur la carte.
 - **Navigation par swipe pur** : plus d'onglets — les vues adjacentes dépassent (~4 %) de chaque côté comme poignées (tap sur le peek = naviguer).
 - **« + » sur tous les blocs** : questions (création inline → `control_create_question`), définitions (génération LLM), sondages/votes (existant).
-- **Définitions par LLM** : Edge Function `define-term` (Claude **Haiku 4.5**, clé API côté serveur uniquement, auth PIN avant tout appel, `verify_jwt` désactivé car auth applicative). Saisir un mot → définition courte FR insérée → chip en temps réel (table `definitions` ajoutée au realtime).
+- **Définitions par LLM** : Edge Function `define-term` (**DeepSeek `deepseek-chat`**, clé API côté serveur uniquement, auth PIN avant tout appel, `verify_jwt` désactivé car auth applicative). Saisir un mot → définition courte FR insérée → chip en temps réel (table `definitions` ajoutée au realtime).
 - **Définitions à usage unique** : `used` marqué au lancement, la chip disparaît (RPC `control_set_definition_used`).
 - **Timer Durée manuel** : `screen_state.timer_started_at`, bouton ▶/■ sur la case Durée de la barre d'état.
 - **Questions posées retirées** de la liste (statut `done` filtré).
@@ -37,7 +49,7 @@
 
 ### Setup requis
 
-- `supabase/functions/.env` : `ANTHROPIC_API_KEY=sk-ant-…` (local) ; en cloud : `supabase secrets set ANTHROPIC_API_KEY=…`. Lancer la fonction localement : `supabase functions serve define-term --env-file supabase/functions/.env`.
+- `supabase/functions/.env` : `DEEPSEEK_API_KEY=sk-…` (local) ; en cloud : `supabase secrets set DEEPSEEK_API_KEY=…`. Lancer la fonction localement : `supabase functions serve define-term --env-file supabase/functions/.env` (laisser tourner — `supabase start` seul ne sert pas les Edge Functions).
 
 ## Sprint 5 — Qualité & résilience (10 juin 2026)
 

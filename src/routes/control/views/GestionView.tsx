@@ -22,6 +22,8 @@ interface GestionViewProps {
   definitions: Definition[]
   contents: Content[]
   onLaunch: (payload: LaunchPayload) => void
+  /** Brouillon LLM fraîchement généré, à relire dans la modale de revue. */
+  onGenerated: (definition: Definition) => void
 }
 
 function SectionCard({
@@ -63,6 +65,7 @@ export function GestionView({
   definitions,
   contents,
   onLaunch,
+  onGenerated,
 }: GestionViewProps) {
   const [adHocOpen, setAdHocOpen] = useState<'poll' | 'versus' | null>(null)
   const [newQuestion, setNewQuestion] = useState<string | null>(null)
@@ -81,7 +84,7 @@ export function GestionView({
       }
       return a.pinned ? -1 : 1
     })
-  const availableDefinitions = definitions.filter((d) => !d.used)
+  const availableDefinitions = definitions.filter((d) => !d.used && d.validated)
   const sondages = polls.filter((p) => p.kind === 'poll' && p.status !== 'archived')
   const votes = polls.filter((p) => p.kind === 'versus' && p.status !== 'archived')
   const overlay = control.screen.overlay
@@ -153,8 +156,9 @@ export function GestionView({
     if (!term || generating) return
     setGenerating(true)
     try {
-      await mutations.generateDefinition(session, term)
+      const def = await mutations.generateDefinition(session, term)
       setNewTerm(null)
+      onGenerated(def)
     } catch {
       // L'erreur reste discrète : le champ garde le terme pour réessayer.
     } finally {
