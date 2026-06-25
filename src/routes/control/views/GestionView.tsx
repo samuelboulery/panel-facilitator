@@ -65,9 +65,9 @@ function SectionCard({
   children?: React.ReactNode
 }) {
   return (
-    <section className={`flex min-h-0 min-w-0 flex-col rounded-2xl bg-control-panel p-3 ${className ?? ''}`}>
-      <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="font-mono text-sm tracking-wide text-control-dim">{title}</h2>
+    <section className={`flex min-h-0 min-w-0 flex-col rounded-2xl bg-control-panel p-4 ${className ?? ''}`}>
+      <div className="mb-1 flex items-center justify-between px-1">
+        <h2 className="font-mono text-base tracking-wide text-control-ink">{title}</h2>
         {onAdd && (
           <button
             type="button"
@@ -355,7 +355,7 @@ export function GestionView({
                       key={content.id}
                       type="button"
                       onClick={() => launchContent(content)}
-                      className={`rounded-xl px-4 py-2.5 text-xl font-medium shadow-sm transition active:scale-95 ${
+                      className={`rounded-xl px-6 py-3 text-xl font-medium shadow-control-card transition active:scale-95 ${
                         active ? 'bg-control-accent text-white' : 'bg-control-card text-control-ink'
                       }`}
                     >
@@ -469,7 +469,7 @@ function QuestionCard({
   return (
     <div
       onClick={active ? onClose : undefined}
-      className={`rounded-xl border-2 p-3 shadow-sm transition ${
+      className={`rounded-xl border-2 py-4 pr-4 pl-6 shadow-control-card transition ${
         active
           ? 'cursor-pointer border-transparent bg-control-accent text-white'
           : question.pinned
@@ -561,7 +561,7 @@ function PollCard({
   return (
     <div
       onClick={enCours ? () => onStop(poll) : undefined}
-      className={`flex flex-col gap-2 rounded-xl px-4 py-2.5 text-xl font-medium shadow-sm ${
+      className={`flex flex-col gap-2 rounded-xl px-6 py-3 text-xl font-medium shadow-control-card ${
         enCours
           ? 'cursor-pointer bg-control-accent text-white'
           : closed

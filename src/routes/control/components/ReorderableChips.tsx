@@ -98,7 +98,7 @@ export function ReorderableChips({
               if (dragDistance.current <= DRAG_THRESHOLD_PX) onTap(item.id)
               dragDistance.current = 0
             }}
-            className={`relative flex items-center gap-2 overflow-hidden rounded-xl px-3.5 py-2.5 text-xl font-medium shadow-sm transition-colors active:scale-95 ${
+            className={`relative flex items-center gap-2 overflow-hidden rounded-xl px-6 py-3 text-xl font-medium shadow-control-card transition-colors active:scale-95 ${
               activeId === item.id
                 ? 'bg-control-accent text-white'
                 : 'bg-control-card text-control-ink'
