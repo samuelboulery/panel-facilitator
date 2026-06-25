@@ -111,21 +111,29 @@ export default function ScreenRoute() {
   return (
     <div ref={stageRef} className="screen-surface stage-atmosphere flex flex-col" style={brandStyle}>
       <CardPositionProvider value={{ positions: state.cardPositions, stageRef }}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={state.mode}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.45, ease: 'easeInOut' }}
-            className="min-h-0 flex-1"
-          >
-            {state.mode === 'attente' && <AttenteMode data={data} />}
-            {state.mode === 'intro' && <IntroMode data={data} state={state} />}
-            {state.mode === 'dynamique' && <DynamiqueMode data={data} state={state} />}
-            {state.mode === 'outro' && <OutroMode data={data} />}
-          </motion.div>
-        </AnimatePresence>
+        {/* Crossfade par superposition (calques absolus) : le mode entrant monte
+            immédiatement au changement de clé, l'ancien s'efface par-dessus. PAS de
+            mode="wait" — il bloquait le montage du mode suivant tant que la sortie
+            du précédent n'était pas terminée ; une sortie de mode DYNAMIQUE (iframe
+            + animations imbriquées + re-render realtime) pouvait ne jamais finir,
+            laissant l'EP vide jusqu'au rechargement. */}
+        <div className="relative min-h-0 flex-1">
+          <AnimatePresence>
+            <motion.div
+              key={state.mode}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: 'easeInOut' }}
+              className="absolute inset-0"
+            >
+              {state.mode === 'attente' && <AttenteMode data={data} />}
+              {state.mode === 'intro' && <IntroMode data={data} state={state} />}
+              {state.mode === 'dynamique' && <DynamiqueMode data={data} state={state} />}
+              {state.mode === 'outro' && <OutroMode data={data} />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </CardPositionProvider>
 
       {/* Bandeau sponsors : masqué en mode dynamique (demande régie) et en
