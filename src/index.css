@@ -257,3 +257,10 @@
   animation: sponsor-marquee var(--marquee-duration, 30s) linear infinite;
   will-change: transform;
 }
+
+/* Progression de la définition affichée (état « en cours » de la régie) :
+   la barre se remplit sur la durée d'auto-fermeture, puis la chip disparaît. */
+@keyframes def-progress {
+  from { width: 0; }
+  to { width: 100%; }
+}

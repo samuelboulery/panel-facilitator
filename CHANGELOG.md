@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## Refonte régie — carrousel unifié, états in-place, notes par le haut (25 juin 2026)
+
+### Livré
+
+- **Carrousel unique = le deck** (`DeckCarousel`) : fusion des anciennes vues Slides + Gestion. La slide « dynamique » affiche le dashboard de gestion ; les slides « fixes » affichent l'aperçu EP. Navigation au drag sur le fond + clic en bordure (slides en peek) + clavier ←/→ ; chaque déplacement pilote l'EP via la machine à états (inchangée).
+- **Bandeau d'état bas supprimé** (`StatusBar` retiré). Ses fonctions sont relogées : horloge, timer manuel (renommé « Restant »), toggle QR dans la card **Infos** du dashboard ; navigation dans le carrousel.
+- **États « en cours » in-place** : l'élément actif passe en fond accent / texte blanc à sa place. Définition = barre de progression jusqu'à l'auto-fermeture (12 s) puis disparaît (la chip active reste visible le temps de l'overlay). Sondage/vote = bouton « Arrêter / Révéler / Retirer » in-card. Question affichée = bouton « Retirer ».
+- **Notes par le haut** (`NotesPanel`) : poignée centrée en haut, tap ou drag pour ouvrir/fermer (remplace l'onglet Notes du pager). Éditeur inchangé.
+- **Modale « Modifier la position des cards »** (`CardPositionModal`) : remplace l'édition inline. Aperçu de la scène dynamique avec cartes draggables (`MovableCard` → `screen_state.cardPositions`, inchangé). Déclenchée depuis la slide dynamique (bas-droite) et sous les slides fixes.
+
+### Notes
+
+- Aucune modification de l'EP (`src/routes/screen`) ni du schéma DB. Aucune nouvelle dépendance.
+
 ## Revue des définitions générées (23 juin 2026)
 
 ### Livré

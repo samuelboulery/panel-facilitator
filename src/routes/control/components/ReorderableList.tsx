@@ -1,7 +1,7 @@
-// Liste verticale réordonnable (Reorder framer-motion) — handle ⠿,
-// mise à jour optimiste pendant le drag, persistance au drop (parent).
+// Liste verticale réordonnable (Reorder framer-motion) — drag sur la carte
+// entière (pas d'icône), mise à jour optimiste, persistance au drop (parent).
 import { useEffect, useRef, useState } from 'react'
-import { Reorder, useDragControls } from 'framer-motion'
+import { Reorder } from 'framer-motion'
 
 interface ReorderableListProps<T extends { id: string }> {
   items: T[]
@@ -60,26 +60,13 @@ function Row<T extends { id: string }>({
   onDragStart: () => void
   onDragEnd: () => void
 }) {
-  const controls = useDragControls()
-  const handle = (
-    <button
-      type="button"
-      aria-label="Réordonner"
-      onPointerDown={(e) => controls.start(e)}
-      className="cursor-grab touch-none p-1 text-control-dim"
-    >
-      ⠿
-    </button>
-  )
   return (
     <Reorder.Item
       value={item}
-      dragListener={false}
-      dragControls={controls}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
-      {renderItem(item, handle)}
+      {renderItem(item, null)}
     </Reorder.Item>
   )
 }
