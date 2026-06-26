@@ -13,13 +13,21 @@ export interface ChipItem {
 interface ReorderableChipsProps {
   items: ChipItem[]
   activeId?: string | null
+  /** Durée (ms) de la barre de progression sur la chip active (définition en cours). */
+  activeProgressMs?: number | null
   onTap: (id: string) => void
   onReorder: (ids: string[]) => void
 }
 
 const DRAG_THRESHOLD_PX = 8
 
-export function ReorderableChips({ items, activeId, onTap, onReorder }: ReorderableChipsProps) {
+export function ReorderableChips({
+  items,
+  activeId,
+  activeProgressMs,
+  onTap,
+  onReorder,
+}: ReorderableChipsProps) {
   const [order, setOrder] = useState(items)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const nodeRefs = useRef(new Map<string, HTMLDivElement>())
@@ -90,16 +98,24 @@ export function ReorderableChips({ items, activeId, onTap, onReorder }: Reordera
               if (dragDistance.current <= DRAG_THRESHOLD_PX) onTap(item.id)
               dragDistance.current = 0
             }}
-            className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xl font-medium shadow-sm transition-colors active:scale-95 ${
+            className={`relative flex items-center gap-2 overflow-hidden rounded-xl px-6 py-3 text-xl font-medium shadow-control-card transition-colors active:scale-95 ${
               activeId === item.id
                 ? 'bg-control-accent text-white'
                 : 'bg-control-card text-control-ink'
             }`}
           >
             {item.label}
-            <span aria-hidden className="cursor-grab text-control-dim">
-              ⠿
-            </span>
+            {/* Définition en cours : barre de progression jusqu'à l'auto-fermeture.
+                key=activeId → l'animation redémarre à chaque nouvelle définition. */}
+            {activeId === item.id && activeProgressMs ? (
+              <span className="absolute inset-x-3 bottom-1 h-1.5 overflow-hidden rounded-full bg-white/20">
+                <span
+                  key={item.id}
+                  className="block h-full rounded-full bg-white"
+                  style={{ animation: `def-progress ${activeProgressMs}ms linear forwards` }}
+                />
+              </span>
+            ) : null}
           </button>
         </motion.div>
       ))}

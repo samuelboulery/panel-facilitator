@@ -3,7 +3,7 @@
 // Questions en liste dragable (création via « + », disparaissent une fois
 // posées), Sondages et Votes en piles dragables. Toute action d'affichage
 // passe par la modale 3 s ; la machine à états refuse les conflits (toast).
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ControlSession } from '../../../realtime/mutations'
 import * as mutations from '../../../realtime/mutations'
 import type { Content, Definition, Poll, Question } from '../../../shared/types'
@@ -21,26 +21,53 @@ interface GestionViewProps {
   polls: Poll[]
   definitions: Definition[]
   contents: Content[]
+  /** Durée (ms) d'affichage auto d'une définition — alimente la barre de progression. */
+  definitionProgressMs: number
   onLaunch: (payload: LaunchPayload) => void
   /** Brouillon LLM fraîchement généré, à relire dans la modale de revue. */
   onGenerated: (definition: Definition) => void
+}
+
+// Horloge live (tick 1 s) — l'heure et la durée du timer doivent avancer.
+function useClock(): Date {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1_000)
+    return () => clearInterval(id)
+  }, [])
+  return now
+}
+
+function formatDuration(startedAt: string | null, now: Date): string {
+  if (!startedAt) return '00:00'
+  const elapsed = now.getTime() - new Date(startedAt).getTime()
+  if (Number.isNaN(elapsed) || elapsed < 0) return '00:00'
+  const h = Math.floor(elapsed / 3_600_000)
+  const m = Math.floor((elapsed % 3_600_000) / 60_000)
+  const s = Math.floor((elapsed % 60_000) / 1000)
+  const mm = String(m).padStart(2, '0')
+  const ss = String(s).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }
 
 function SectionCard({
   title,
   onAdd,
   addLabel,
+  className,
   children,
 }: {
   title: string
   onAdd?: () => void
   addLabel?: string
-  children: React.ReactNode
+  /** Classes supplémentaires (largeur de cellule, etc.). */
+  className?: string
+  children?: React.ReactNode
 }) {
   return (
-    <section className="rounded-2xl bg-control-panel p-3">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="font-mono text-sm tracking-wide text-control-dim">{title}</h2>
+    <section className={`flex min-h-0 min-w-0 flex-col rounded-2xl bg-control-panel p-4 ${className ?? ''}`}>
+      <div className="mb-1 flex items-center justify-between px-1">
+        <h2 className="font-mono text-base tracking-wide text-control-ink">{title}</h2>
         {onAdd && (
           <button
             type="button"
@@ -52,7 +79,8 @@ function SectionCard({
           </button>
         )}
       </div>
-      {children}
+      {/* Corps défilant : le dashboard occupe une slide de hauteur fixe. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </section>
   )
 }
@@ -64,6 +92,7 @@ export function GestionView({
   polls,
   definitions,
   contents,
+  definitionProgressMs,
   onLaunch,
   onGenerated,
 }: GestionViewProps) {
@@ -71,6 +100,7 @@ export function GestionView({
   const [newQuestion, setNewQuestion] = useState<string | null>(null)
   const [newTerm, setNewTerm] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const now = useClock()
 
   // Posées (done) et archivées disparaissent ; définitions déjà affichées aussi.
   // Épinglées remontent en tête, triées par ordre chronologique d'épinglage.
@@ -84,12 +114,22 @@ export function GestionView({
       }
       return a.pinned ? -1 : 1
     })
-  const availableDefinitions = definitions.filter((d) => !d.used && d.validated)
+  const overlay = control.screen.overlay
+  // Définition active : reste visible « en cours » (avec progression) à sa place
+  // jusqu'à l'auto-fermeture, même si elle vient de passer en used.
+  const activeDefinitionId = overlay?.type === 'definition' ? overlay.id : null
+  const availableDefinitions = definitions.filter(
+    (d) => (!d.used && d.validated) || d.id === activeDefinitionId,
+  )
   const sondages = polls.filter((p) => p.kind === 'poll' && p.status !== 'archived')
   const votes = polls.filter((p) => p.kind === 'versus' && p.status !== 'archived')
-  const overlay = control.screen.overlay
 
   const launchDefinition = (id: string) => {
+    // Définition déjà en cours : un nouveau clic la retire de l'EP.
+    if (id === activeDefinitionId) {
+      control.closeOverlay()
+      return
+    }
     const def = availableDefinitions.find((d) => d.id === id)
     if (!def) return
     onLaunch({
@@ -144,6 +184,22 @@ export function GestionView({
     })
   }
 
+  // Arrêts in-place (remplacent les contrôles de l'ancien bandeau d'état).
+  // Sondage/vote : live → clôture (résultats) ; clôturé → retrait de l'overlay.
+  const stopPoll = (poll: Poll) => {
+    if (poll.status === 'closed') control.closeOverlay()
+    else mutations.setPollStatus(session, poll.id, 'closed').catch(() => undefined)
+  }
+  const closeActiveQuestion = (question: Question) => {
+    control.closeOverlay()
+    mutations.setQuestionStatus(session, question.id, 'done').catch(() => undefined)
+  }
+  const toggleTimer = () => {
+    mutations
+      .setTimerStartedAt(session, control.screen.timerStartedAt ? null : new Date().toISOString())
+      .catch(() => undefined)
+  }
+
   const submitNewQuestion = () => {
     const text = newQuestion?.trim()
     if (!text) return
@@ -176,12 +232,10 @@ export function GestionView({
   }
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto">
-      {/* Maquette : colonne large (Définitions + Questions) | colonne étroite
-          (Contenus + Sondages + Votes). */}
-      <div className="grid grid-cols-[1.7fr_1fr] gap-3">
-        {/* Colonne gauche */}
-        <div className="flex flex-col gap-3">
+    <div className="flex h-full flex-col gap-2">
+      {/* Maquette : rangée haute Définitions + Questions, rangée basse
+          Contenus + Sondages + Votes + Infos. */}
+      <div className="grid min-h-0 flex-[1.3_1_0%] grid-cols-[1.6fr_1fr] gap-2">
           {/* Définitions — chips dragables, génération LLM */}
           <SectionCard
             title="Définitions"
@@ -218,7 +272,8 @@ export function GestionView({
             )}
             <ReorderableChips
               items={availableDefinitions.map((d) => ({ id: d.id, label: d.term }))}
-              activeId={overlay?.type === 'definition' ? overlay.id : null}
+              activeId={activeDefinitionId}
+              activeProgressMs={definitionProgressMs}
               onTap={launchDefinition}
               onReorder={reorder('definitions')}
             />
@@ -263,6 +318,7 @@ export function GestionView({
                   question={question}
                   active={overlay?.type === 'question' && overlay.id === question.id}
                   onLaunch={() => launchQuestion(question)}
+                  onClose={() => closeActiveQuestion(question)}
                   onPin={() =>
                     mutations
                       .setQuestionPinned(session, question.id, !question.pinned)
@@ -283,10 +339,10 @@ export function GestionView({
               </p>
             )}
           </SectionCard>
-        </div>
+      </div>
 
-        {/* Colonne droite */}
-        <div className="flex flex-col gap-3">
+      {/* Rangée basse : Contenus + Sondages + Votes + Infos */}
+      <div className="grid min-h-0 flex-1 grid-cols-[1fr_1fr_1fr_0.55fr] gap-2">
           {/* Contenus — médias projetables (Slides/Figma/image/vidéo). Lancement
               via modale 3 s ; tap du contenu actif = arrêt (retour scène titre). */}
           <SectionCard title="Contenus">
@@ -299,7 +355,7 @@ export function GestionView({
                       key={content.id}
                       type="button"
                       onClick={() => launchContent(content)}
-                      className={`rounded-xl px-4 py-2.5 text-xl font-medium shadow-sm transition active:scale-95 ${
+                      className={`rounded-xl px-6 py-3 text-xl font-medium shadow-control-card transition active:scale-95 ${
                         active ? 'bg-control-accent text-white' : 'bg-control-card text-control-ink'
                       }`}
                     >
@@ -323,7 +379,7 @@ export function GestionView({
               items={sondages}
               onReorder={reorderPolls('poll')}
               renderItem={(poll, handle) => (
-                <PollCard poll={poll} overlayActive={overlay?.id === poll.id} onLaunch={launchPoll} handle={handle} />
+                <PollCard poll={poll} overlayActive={overlay?.id === poll.id} onLaunch={launchPoll} onStop={stopPoll} handle={handle} />
               )}
             />
           </SectionCard>
@@ -338,11 +394,48 @@ export function GestionView({
               items={votes}
               onReorder={reorderPolls('versus')}
               renderItem={(poll, handle) => (
-                <PollCard poll={poll} overlayActive={overlay?.id === poll.id} onLaunch={launchPoll} handle={handle} />
+                <PollCard poll={poll} overlayActive={overlay?.id === poll.id} onLaunch={launchPoll} onStop={stopPoll} handle={handle} />
               )}
             />
           </SectionCard>
-        </div>
+
+          {/* Infos — horloge, timer (« Restant »), QR : relogés depuis l'ancien
+              bandeau bas (supprimé). */}
+          <SectionCard title="Infos">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col">
+                <span className="font-mono text-xs text-control-dim">Heure</span>
+                <span className="text-xl font-semibold tabular-nums">
+                  {now
+                    .toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                    .replace(':', 'h')}
+                </span>
+              </div>
+              {/* « Restant » = timer manuel — tap pour démarrer/arrêter. */}
+              <button type="button" onClick={toggleTimer} className="flex flex-col items-start active:scale-95">
+                <span className="flex items-center gap-1.5 font-mono text-xs text-control-dim">
+                  Restant
+                  <span aria-hidden className="text-[10px]">
+                    {control.screen.timerStartedAt ? '■' : '▶'}
+                  </span>
+                </span>
+                <span
+                  className={`text-xl font-semibold tabular-nums ${
+                    control.screen.timerStartedAt ? '' : 'text-control-dim'
+                  }`}
+                >
+                  {formatDuration(control.screen.timerStartedAt, now)}
+                </span>
+              </button>
+              {/* QR code : affiche/masque sur l'EP (mode dynamique). */}
+              <button type="button" onClick={control.toggleQr} className="flex flex-col items-start active:scale-95">
+                <span className="font-mono text-xs text-control-dim">QR code</span>
+                <span className={`text-xl font-semibold ${control.screen.qrVisible ? '' : 'text-control-dim'}`}>
+                  {control.screen.qrVisible ? 'Affiché' : 'Masqué'}
+                </span>
+              </button>
+            </div>
+          </SectionCard>
       </div>
 
       <AdHocPollModal
@@ -358,6 +451,7 @@ function QuestionCard({
   question,
   active,
   onLaunch,
+  onClose,
   onPin,
   onArchive,
   handle,
@@ -365,25 +459,31 @@ function QuestionCard({
   question: Question
   active: boolean
   onLaunch: () => void
+  /** Retire la question affichée sur l'EP (état « en cours »). */
+  onClose: () => void
   onPin: () => void
   onArchive: () => void
   handle?: React.ReactNode
 }) {
+  // En cours : fond accent, texte blanc. Clic sur toute la card = retrait.
   return (
     <div
-      className={`rounded-xl border-2 bg-control-card p-3 shadow-sm transition ${
+      onClick={active ? onClose : undefined}
+      className={`rounded-xl border-2 py-4 pr-4 pl-6 shadow-control-card transition ${
         active
-          ? 'border-control-accent'
+          ? 'cursor-pointer border-transparent bg-control-accent text-white'
           : question.pinned
-            ? 'border-[#4e57ff]'
-            : 'border-transparent'
+            ? 'border-[#4e57ff] bg-control-card'
+            : 'border-transparent bg-control-card'
       }`}
     >
       <div className="flex items-start gap-1">
         <button
           type="button"
-          className={`flex-1 text-left text-xl leading-snug ${question.pinned ? 'font-bold text-[#1f27c7]' : ''}`}
-          onClick={onLaunch}
+          className={`flex-1 text-left text-xl leading-snug ${
+            active ? '' : question.pinned ? 'font-bold text-[#1f27c7]' : ''
+          }`}
+          onClick={active ? undefined : onLaunch}
         >
           {question.text}
         </button>
@@ -391,27 +491,46 @@ function QuestionCard({
       </div>
       <div className="mt-2 flex items-center gap-2">
         {question.source === 'audience' && (
-          <span className="rounded bg-control-accent px-1.5 py-0.5 font-mono text-[10px] text-white">
+          <span
+            className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${
+              active ? 'bg-white/20 text-white' : 'bg-control-accent text-white'
+            }`}
+          >
             Public
           </span>
         )}
         <span className="flex-1" />
-        <button
-          type="button"
-          onClick={onPin}
-          className={`rounded px-2 py-1 font-mono text-base active:scale-95 ${
-            question.pinned ? 'bg-[#1f27c7] text-white' : 'text-control-dim'
-          }`}
-        >
-          {question.pinned ? 'Épinglée' : 'Épingler'}
-        </button>
-        <button
-          type="button"
-          onClick={onArchive}
-          className="rounded px-2 py-1 font-mono text-base text-control-dim active:scale-95"
-        >
-          Archiver
-        </button>
+        {active ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose()
+            }}
+            className="rounded-full bg-white px-4 py-1.5 font-mono text-sm font-semibold text-control-ink active:scale-95"
+          >
+            Retirer
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onPin}
+              className={`rounded px-2 py-1 font-mono text-base active:scale-95 ${
+                question.pinned ? 'bg-[#1f27c7] text-white' : 'text-control-dim'
+              }`}
+            >
+              {question.pinned ? 'Épinglée' : 'Épingler'}
+            </button>
+            <button
+              type="button"
+              onClick={onArchive}
+              className="rounded px-2 py-1 font-mono text-base text-control-dim active:scale-95"
+            >
+              Archiver
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -421,35 +540,58 @@ function PollCard({
   poll,
   overlayActive,
   onLaunch,
+  onStop,
   handle,
 }: {
   poll: Poll
   overlayActive: boolean
   onLaunch: (poll: Poll) => void
+  /** Clôture (live) ou retrait de l'overlay (clôturé) — état « en cours ». */
+  onStop: (poll: Poll) => void
   handle?: React.ReactNode
 }) {
   const live = poll.status === 'live'
   const closed = poll.status === 'closed'
+  const isVersus = poll.kind === 'versus'
+  // En cours : affiché sur l'EP (live ou overlay clôturé encore visible).
+  const enCours = live || overlayActive
+  const stopLabel = live ? (isVersus ? 'Révéler le résultat' : 'Arrêter le sondage') : 'Retirer'
+
+  // En cours : clic sur toute la card = arrêt/retrait.
   return (
     <div
-      className={`flex items-center gap-1 rounded-xl pl-4 pr-2 py-2.5 text-xl font-medium shadow-sm ${
-        live || overlayActive
-          ? 'bg-control-accent text-white'
+      onClick={enCours ? () => onStop(poll) : undefined}
+      className={`flex flex-col gap-2 rounded-xl px-6 py-3 text-xl font-medium shadow-control-card ${
+        enCours
+          ? 'cursor-pointer bg-control-accent text-white'
           : closed
             ? 'bg-control-card text-control-dim'
             : 'bg-control-card text-control-ink'
       }`}
     >
-      <button
-        type="button"
-        onClick={() => !live && onLaunch(poll)}
-        className="flex-1 text-left transition active:scale-[0.98]"
-      >
-        {poll.question}
-        {live && ' · en cours'}
-        {closed && ' · clôturé'}
-      </button>
-      {handle}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => !enCours && onLaunch(poll)}
+          className="flex-1 text-left transition active:scale-[0.98]"
+        >
+          {poll.question}
+          {closed && !overlayActive && ' · clôturé'}
+        </button>
+        {handle}
+      </div>
+      {enCours && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onStop(poll)
+          }}
+          className="rounded-full bg-white px-4 py-1.5 text-center font-mono text-sm font-semibold text-control-accent active:scale-95"
+        >
+          {stopLabel}
+        </button>
+      )}
     </div>
   )
 }
