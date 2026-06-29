@@ -1,6 +1,6 @@
 // Écran de saisie du PIN de session — porte d'entrée de l'IR (PRD Q9).
 // Tablette-first : gros pavé numérique, feedback d'erreur clair.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { pinSchema } from '../../shared/schemas'
 
 interface PinGateProps {
@@ -51,6 +51,18 @@ export function PinGate({ onSubmit }: PinGateProps) {
     setError(null)
     setPin((p) => (p.length < 8 ? p + digit : p))
   }
+
+  // Saisie clavier (clavier physique tablette/poste) en plus du pavé tactile.
+  useEffect(() => {
+    if (checking || locked) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') press(e.key)
+      else if (e.key === 'Backspace') setPin((p) => p.slice(0, -1))
+      else if (e.key === 'Enter') void submit()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
   return (
     <div className="flex h-dvh flex-col items-center justify-center gap-8 bg-slate-100">
