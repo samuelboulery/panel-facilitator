@@ -10,24 +10,19 @@ import {
   type AdminEvent,
 } from '../../realtime/adminData'
 import { TextField } from './components/fields'
+import { SavedSnackbar } from './components/SavedSnackbar'
 import { ResetControl } from './sections/ResetControl'
 import { ChecklistSection } from './sections/ChecklistSection'
 import { EventSection } from './sections/EventSection'
-import { BrandingSection } from './sections/BrandingSection'
 import {
   ContentsSection,
   DefinitionsSection,
   PollsSection,
   QuestionsSection,
-  SpeakersSection,
-  SponsorsSection,
 } from './sections/entitySections'
 
 const SECTIONS = [
   { key: 'event', label: 'Événement' },
-  { key: 'branding', label: 'Branding' },
-  { key: 'speakers', label: 'Speakers' },
-  { key: 'sponsors', label: 'Sponsors' },
   { key: 'contents', label: 'Contenus' },
   { key: 'definitions', label: 'Définitions' },
   { key: 'questions', label: 'Questions' },
@@ -151,7 +146,7 @@ export default function AdminRoute() {
 
   return (
     <div className="min-h-dvh bg-control-bg font-display text-control-ink">
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-[1920px] px-6 py-8">
         <header className="mb-6 flex items-center justify-between">
           <div>
             <p className="font-mono text-xs tracking-[0.25em] text-control-dim uppercase">
@@ -192,11 +187,8 @@ export default function AdminRoute() {
           ))}
         </nav>
 
-        <main key={`${section}-${resetKey}`} className="rounded-3xl bg-control-panel p-5">
+        <main key={`${section}-${resetKey}`} className="rounded-3xl">
           {section === 'event' && <EventSection event={event} onSaved={reloadEvent} />}
-          {section === 'branding' && <BrandingSection event={event} onSaved={reloadEvent} />}
-          {section === 'speakers' && <SpeakersSection eventId={event.id} />}
-          {section === 'sponsors' && <SponsorsSection eventId={event.id} />}
           {section === 'contents' && <ContentsSection eventId={event.id} />}
           {section === 'definitions' && <DefinitionsSection eventId={event.id} slug={event.slug} />}
           {section === 'questions' && <QuestionsSection eventId={event.id} />}
@@ -205,6 +197,7 @@ export default function AdminRoute() {
           {section === 'checklist' && <ChecklistSection event={event} />}
         </main>
       </div>
+      <SavedSnackbar />
     </div>
   )
 }

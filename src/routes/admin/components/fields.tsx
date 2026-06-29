@@ -9,24 +9,27 @@ export function TextField({
   onChange,
   placeholder,
   type = 'text',
+  disabled = false,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
   type?: string
+  disabled?: boolean
 }) {
   const id = useId()
   return (
     <label htmlFor={id} className="block">
-      <span className="mb-1 block font-mono text-xs tracking-wide text-control-dim">{label}</span>
+      <span className={`mb-1 block font-mono text-xs tracking-wide ${disabled ? 'text-control-bg' : 'text-control-dim'}`}>{label}</span>
       <input
         id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-control-bg bg-white px-3 py-2 text-sm outline-control-accent"
+        disabled={disabled}
+        className="w-full rounded-lg border border-control-bg bg-white px-3 py-2 text-sm outline-control-accent disabled:cursor-not-allowed disabled:opacity-40"
       />
     </label>
   )
@@ -156,12 +159,16 @@ export function ImageField({
   folder,
   maxDim,
   onUploaded,
+  objectFit = 'cover',
+  previewBg,
 }: {
   label: string
   url: string | null
   folder: 'speakers' | 'sponsors' | 'definitions' | 'branding'
   maxDim: number
   onUploaded: (url: string) => void
+  objectFit?: 'cover' | 'contain'
+  previewBg?: string
 }) {
   const id = useId()
   const [state, setState] = useState<'idle' | 'uploading' | 'error'>('idle')
@@ -181,9 +188,11 @@ export function ImageField({
   return (
     <div className="flex items-center gap-3">
       {url ? (
-        <img src={url} alt="" className="h-12 w-12 rounded-lg object-cover" />
+        <div className={`flex h-12 w-20 shrink-0 items-center justify-center rounded-lg p-1 ${previewBg ?? 'bg-control-bg'}`}>
+          <img src={url} alt="" className={`h-full w-full rounded ${objectFit === 'contain' ? 'object-contain' : 'object-cover'}`} />
+        </div>
       ) : (
-        <div className="h-12 w-12 rounded-lg bg-control-bg" />
+        <div className={`h-12 w-20 shrink-0 rounded-lg ${previewBg ?? 'bg-control-bg'}`} />
       )}
       <label
         htmlFor={id}

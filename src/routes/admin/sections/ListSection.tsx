@@ -9,6 +9,7 @@ import {
   updateRow,
   type AdminTable,
 } from '../../../realtime/adminData'
+import { notifySaved } from '../components/SavedSnackbar'
 
 interface BaseRow {
   id: string
@@ -83,6 +84,7 @@ export function ListSection<T extends BaseRow>({
       }
       setEditing(null)
       await reload()
+      notifySaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur')
     }

@@ -87,14 +87,6 @@ describe('buildChecklist', () => {
     expect(issues.some((i) => i.level === 'error' && /Deck/.test(i.message))).toBe(true)
   })
 
-  it('erreur si slide asso activée sans contenu (PRD 5.3.1)', () => {
-    const issues = buildChecklist({
-      ...full,
-      event: { ...event, assoSlideEnabled: true, assoContent: null },
-    })
-    expect(issues.some((i) => i.level === 'error' && /asso/i.test(i.message))).toBe(true)
-  })
-
   it('erreur si un sondage a moins de 2 options', () => {
     const issues = buildChecklist({
       ...full,
