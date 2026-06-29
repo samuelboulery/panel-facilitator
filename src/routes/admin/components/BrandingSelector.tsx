@@ -93,7 +93,7 @@ export function BrandingSelector({
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg border border-control-bg bg-white shadow-lg">
+        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg border border-control-bg bg-white shadow-control-card">
           <div className="max-h-64 overflow-y-auto py-1">
             {profiles.length === 0 && (
               <p className="px-3 py-2 text-sm text-control-dim">Aucun profil enregistré.</p>

@@ -116,7 +116,7 @@ export function ListSection<T extends BaseRow>({
   return (
     <div className="flex flex-col gap-2">
       {rows.map((row, i) => (
-        <div key={row.id} className="rounded-xl bg-white p-3 shadow-sm">
+        <div key={row.id} className="rounded-xl bg-control-card p-3 shadow-control-card">
           {editing === row.id ? (
             <EditForm
               draft={draft}
@@ -144,7 +144,7 @@ export function ListSection<T extends BaseRow>({
       ))}
 
       {editing === 'new' ? (
-        <div className="rounded-xl bg-white p-3 shadow-sm">
+        <div className="rounded-xl bg-control-card p-3 shadow-control-card">
           <EditForm
             draft={draft}
             setField={setField}

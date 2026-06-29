@@ -58,7 +58,7 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-control-bg">
-      <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-xl">
+      <div className="w-full max-w-sm rounded-3xl bg-control-card p-8 shadow-control-card">
         <h1 className="mb-1 text-xl font-bold">Backoffice</h1>
         <p className="mb-6 font-mono text-xs text-control-dim">Tables rondes design</p>
         <div className="flex flex-col gap-3">
@@ -102,7 +102,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <div className="mx-auto mt-20 max-w-md rounded-3xl bg-white p-8 shadow-xl">
+    <div className="mx-auto mt-20 max-w-md rounded-3xl bg-control-card p-8 shadow-control-card">
       <h2 className="mb-4 text-lg font-bold">Créer l’événement</h2>
       <div className="flex flex-col gap-3">
         <TextField label="Slug (URL)" value={slug} onChange={setSlug} placeholder="ma-table-ronde" />
@@ -188,7 +188,7 @@ export default function AdminRoute() {
               type="button"
               onClick={() => setSection(s.key)}
               className={`rounded-full px-4 py-1.5 font-mono text-sm transition-colors ${
-                section === s.key ? 'bg-control-ink text-white' : 'bg-white text-control-dim'
+                section === s.key ? 'bg-control-ink text-white' : 'bg-control-card text-control-dim shadow-control-card'
               }`}
             >
               {s.label}
