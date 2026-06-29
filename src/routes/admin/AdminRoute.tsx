@@ -2,7 +2,7 @@
 // (PRD §4.1). Supabase Auth (un compte organisateur, PLAN.md D7), login
 // uniquement. Mono-événement V1 : charge le premier événement, ou propose
 // la création s'il n'existe pas.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { signIn, signOut, watchAuth } from '../../realtime/adminAuth'
 import {
   createAdminEvent,
@@ -24,14 +24,23 @@ import {
 const SECTIONS = [
   { key: 'event', label: 'Événement' },
   { key: 'contents', label: 'Contenus' },
-  { key: 'definitions', label: 'Définitions' },
-  { key: 'questions', label: 'Questions' },
-  { key: 'polls', label: 'Sondages' },
-  { key: 'votes', label: 'Votes' },
   { key: 'checklist', label: 'Checklist ✓' },
 ] as const
 
 type SectionKey = (typeof SECTIONS)[number]['key']
+
+/** Sous-section de la page Contenus fusionnée — chaque bloc dans son propre
+ *  panneau (même habillage que la section Événement). */
+function SubSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-control-panel p-5">
+      <h2 className="mb-3 font-mono text-xs tracking-[0.25em] text-control-dim uppercase">
+        {title}
+      </h2>
+      {children}
+    </div>
+  )
+}
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -189,11 +198,33 @@ export default function AdminRoute() {
 
         <main key={`${section}-${resetKey}`} className="rounded-3xl">
           {section === 'event' && <EventSection event={event} onSaved={reloadEvent} />}
-          {section === 'contents' && <ContentsSection eventId={event.id} />}
-          {section === 'definitions' && <DefinitionsSection eventId={event.id} slug={event.slug} />}
-          {section === 'questions' && <QuestionsSection eventId={event.id} />}
-          {section === 'polls' && <PollsSection eventId={event.id} kind="poll" />}
-          {section === 'votes' && <PollsSection eventId={event.id} kind="versus" />}
+          {section === 'contents' && (
+            <div className="flex flex-col gap-4 min-[1200px]:flex-row">
+              <div className="flex flex-3 flex-col gap-4 min-w-0">
+                <SubSection title="Questions">
+                  <QuestionsSection eventId={event.id} />
+                </SubSection>
+                <SubSection title="Contenu externe">
+                  <ContentsSection eventId={event.id} />
+                </SubSection>
+                  <div className="min-w-0">
+                    <SubSection title="Sondages">
+                      <PollsSection eventId={event.id} kind="poll" />
+                    </SubSection>
+                  </div>
+                  <div className="min-w-0">
+                    <SubSection title="Votes">
+                      <PollsSection eventId={event.id} kind="versus" />
+                    </SubSection>
+                  </div>
+              </div>
+              <div className="flex flex-2 flex-col gap-4 min-w-0">
+                <SubSection title="Définitions">
+                  <DefinitionsSection eventId={event.id} slug={event.slug} />
+                </SubSection>
+              </div>
+            </div>
+          )}
           {section === 'checklist' && <ChecklistSection event={event} />}
         </main>
       </div>

@@ -102,7 +102,7 @@ export function EventSection({
   ]
 
   return (
-    <div className="flex flex-col gap-6 min-[1100px]:flex-row">
+    <div className="flex flex-col gap-4 min-[1200px]:flex-row">
       <div className="flex flex-2 flex-col gap-6 rounded-2xl bg-control-panel p-5 min-w-0">
         <div className="grid grid-cols-2 gap-4">
           <TextField label="Titre" value={form.title} onChange={set('title')} />
