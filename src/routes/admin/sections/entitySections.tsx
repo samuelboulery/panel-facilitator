@@ -106,12 +106,12 @@ function ImportBar({ eventId, onImported }: { eventId: string; onImported: () =>
         <button
           type="button"
           onClick={() => void open()}
-          className="rounded-lg bg-white px-3 py-2 font-mono text-xs text-control-ink shadow-sm active:scale-95"
+          className="rounded-lg bg-control-card px-3 py-2 font-mono text-xs text-control-ink shadow-control-card active:scale-95"
         >
           Importer depuis la bibliothèque
         </button>
       ) : (
-        <div className="rounded-xl bg-white p-3 shadow-sm">
+        <div className="rounded-xl bg-control-card p-3 shadow-control-card">
           <div className="mb-2 flex items-center justify-between">
             <p className="font-mono text-xs text-control-dim">Bibliothèque</p>
             <button type="button" onClick={() => setPeople(null)} className="font-mono text-xs text-control-dim active:scale-95">
@@ -238,7 +238,9 @@ export function SponsorsSection({ eventId }: { eventId: string }) {
       emptyRow={() => ({ name: '', logo_url: '' })}
       renderSummary={(s) => (
         <div className="flex items-center gap-3">
-          <img src={s.logo_url} alt="" className="h-8 max-w-24 object-contain" />
+          <div className="flex h-9 w-20 shrink-0 items-center justify-center rounded bg-gray-100 px-1">
+            <img src={s.logo_url} alt="" className="h-full w-full object-contain" />
+          </div>
           <span className="text-sm font-semibold">{s.name}</span>
         </div>
       )}
@@ -250,6 +252,8 @@ export function SponsorsSection({ eventId }: { eventId: string }) {
             url={typeof d.logo_url === 'string' && d.logo_url ? d.logo_url : null}
             folder="sponsors"
             maxDim={400}
+            objectFit="contain"
+            previewBg="bg-gray-100"
             onUploaded={(url) => set('logo_url', url)}
           />
         </>
@@ -346,7 +350,7 @@ function GenerateDefinitionBar({ slug, onGenerated }: { slug: string; onGenerate
   }
 
   return (
-    <div className="mb-3 rounded-xl bg-white p-3 shadow-sm">
+    <div className="mb-3 rounded-xl bg-control-card p-3 shadow-control-card">
       <p className="mb-2 font-mono text-xs text-control-dim">Générer par IA</p>
       <div className="flex gap-2">
         <input

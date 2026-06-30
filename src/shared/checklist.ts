@@ -4,7 +4,6 @@
 //   warning → dégradation visible (fallback)
 //   info    → choix possible mais à confirmer
 import { isValidHttpUrl, toEmbedUrl } from './embed'
-import { assoContentSchema } from './schemas'
 import type { Content, Definition, EventPublic, Poll, Speaker, Sponsor } from './types'
 
 export type ChecklistLevel = 'error' | 'warning' | 'info'
@@ -40,12 +39,6 @@ export function buildChecklist(input: ChecklistInput): ChecklistIssue[] {
   }
   if (!event.closingMessage) {
     add('info', 'event', 'Pas de message de clôture — l’outro affichera le titre de l’événement.')
-  }
-  if (event.assoSlideEnabled) {
-    const parsed = assoContentSchema.safeParse(event.assoContent)
-    if (!parsed.success || !parsed.data?.name) {
-      add('error', 'event', 'Slide asso activée mais sans contenu — la renseigner ou la désactiver.')
-    }
   }
 
   // ── Speakers ──

@@ -2,7 +2,7 @@
 // (PRD §4.1). Supabase Auth (un compte organisateur, PLAN.md D7), login
 // uniquement. Mono-événement V1 : charge le premier événement, ou propose
 // la création s'il n'existe pas.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { signIn, signOut, watchAuth } from '../../realtime/adminAuth'
 import {
   createAdminEvent,
@@ -10,33 +10,37 @@ import {
   type AdminEvent,
 } from '../../realtime/adminData'
 import { TextField } from './components/fields'
+import { SavedSnackbar } from './components/SavedSnackbar'
 import { ResetControl } from './sections/ResetControl'
 import { ChecklistSection } from './sections/ChecklistSection'
 import { EventSection } from './sections/EventSection'
-import { BrandingSection } from './sections/BrandingSection'
 import {
   ContentsSection,
   DefinitionsSection,
   PollsSection,
   QuestionsSection,
-  SpeakersSection,
-  SponsorsSection,
 } from './sections/entitySections'
 
 const SECTIONS = [
   { key: 'event', label: 'Événement' },
-  { key: 'branding', label: 'Branding' },
-  { key: 'speakers', label: 'Speakers' },
-  { key: 'sponsors', label: 'Sponsors' },
   { key: 'contents', label: 'Contenus' },
-  { key: 'definitions', label: 'Définitions' },
-  { key: 'questions', label: 'Questions' },
-  { key: 'polls', label: 'Sondages' },
-  { key: 'votes', label: 'Votes' },
   { key: 'checklist', label: 'Checklist ✓' },
 ] as const
 
 type SectionKey = (typeof SECTIONS)[number]['key']
+
+/** Sous-section de la page Contenus fusionnée — chaque bloc dans son propre
+ *  panneau (même habillage que la section Événement). */
+function SubSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-control-panel p-5">
+      <h2 className="mb-3 font-mono text-xs tracking-[0.25em] text-control-dim uppercase">
+        {title}
+      </h2>
+      {children}
+    </div>
+  )
+}
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -54,7 +58,7 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-control-bg">
-      <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-xl">
+      <div className="w-full max-w-sm rounded-3xl bg-control-card p-8 shadow-control-card">
         <h1 className="mb-1 text-xl font-bold">Backoffice</h1>
         <p className="mb-6 font-mono text-xs text-control-dim">Tables rondes design</p>
         <div className="flex flex-col gap-3">
@@ -98,7 +102,7 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <div className="mx-auto mt-20 max-w-md rounded-3xl bg-white p-8 shadow-xl">
+    <div className="mx-auto mt-20 max-w-md rounded-3xl bg-control-card p-8 shadow-control-card">
       <h2 className="mb-4 text-lg font-bold">Créer l’événement</h2>
       <div className="flex flex-col gap-3">
         <TextField label="Slug (URL)" value={slug} onChange={setSlug} placeholder="ma-table-ronde" />
@@ -151,7 +155,7 @@ export default function AdminRoute() {
 
   return (
     <div className="min-h-dvh bg-control-bg font-display text-control-ink">
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-[1920px] px-6 py-8">
         <header className="mb-6 flex items-center justify-between">
           <div>
             <p className="font-mono text-xs tracking-[0.25em] text-control-dim uppercase">
@@ -184,7 +188,7 @@ export default function AdminRoute() {
               type="button"
               onClick={() => setSection(s.key)}
               className={`rounded-full px-4 py-1.5 font-mono text-sm transition-colors ${
-                section === s.key ? 'bg-control-ink text-white' : 'bg-white text-control-dim'
+                section === s.key ? 'bg-control-ink text-white' : 'bg-control-card text-control-dim shadow-control-card'
               }`}
             >
               {s.label}
@@ -192,19 +196,39 @@ export default function AdminRoute() {
           ))}
         </nav>
 
-        <main key={`${section}-${resetKey}`} className="rounded-3xl bg-control-panel p-5">
+        <main key={`${section}-${resetKey}`} className="rounded-3xl">
           {section === 'event' && <EventSection event={event} onSaved={reloadEvent} />}
-          {section === 'branding' && <BrandingSection event={event} onSaved={reloadEvent} />}
-          {section === 'speakers' && <SpeakersSection eventId={event.id} />}
-          {section === 'sponsors' && <SponsorsSection eventId={event.id} />}
-          {section === 'contents' && <ContentsSection eventId={event.id} />}
-          {section === 'definitions' && <DefinitionsSection eventId={event.id} slug={event.slug} />}
-          {section === 'questions' && <QuestionsSection eventId={event.id} />}
-          {section === 'polls' && <PollsSection eventId={event.id} kind="poll" />}
-          {section === 'votes' && <PollsSection eventId={event.id} kind="versus" />}
+          {section === 'contents' && (
+            <div className="flex flex-col gap-4 min-[1200px]:flex-row">
+              <div className="flex flex-3 flex-col gap-4 min-w-0">
+                <SubSection title="Questions">
+                  <QuestionsSection eventId={event.id} />
+                </SubSection>
+                <SubSection title="Contenu externe">
+                  <ContentsSection eventId={event.id} />
+                </SubSection>
+                  <div className="min-w-0">
+                    <SubSection title="Sondages">
+                      <PollsSection eventId={event.id} kind="poll" />
+                    </SubSection>
+                  </div>
+                  <div className="min-w-0">
+                    <SubSection title="Votes">
+                      <PollsSection eventId={event.id} kind="versus" />
+                    </SubSection>
+                  </div>
+              </div>
+              <div className="flex flex-2 flex-col gap-4 min-w-0">
+                <SubSection title="Définitions">
+                  <DefinitionsSection eventId={event.id} slug={event.slug} />
+                </SubSection>
+              </div>
+            </div>
+          )}
           {section === 'checklist' && <ChecklistSection event={event} />}
         </main>
       </div>
+      <SavedSnackbar />
     </div>
   )
 }
